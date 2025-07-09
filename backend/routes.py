@@ -17,3 +17,24 @@ def create_task():
     db.session.commit()
     return jsonify({'message': 'Task created successfully'}), 201
 
+from backend.auth import hash_password, check_password, generate_token, verify_token
+from backend.models import User
+from flask import request
+
+@api_bp.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    hashed_password = hash_password(data['password'])
+    user = User(username=data['username'], email=data['email'], password=hashed_password)
+    db.session.add(user)
+    db.session.commit()
+    return {"message": "Usuario registrado correctamente"}, 201
+
+@api_bp.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    user = User.query.filter_by(email=data['email']).first()
+    if user and check_password(user.password, data['password']):
+        token = generate_token(user.id)
+        return {"token": token}
+    return {"message": "Credenciales inválidas"}, 401
