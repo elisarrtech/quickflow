@@ -30,14 +30,23 @@ def token_required(f):
 @api_bp.route('/register', methods=['POST'])
 def register():
     data = request.json
+
+    # Validaciones mínimas
+    if not data.get('email') or not data.get('password'):
+        return {"message": "Email y password son requeridos"}, 400
+
+    # Verificar si ya existe
     if User.query.filter_by(email=data['email']).first():
         return {"message": "Email ya registrado"}, 400
 
+    # Crear usuario
     hashed_password = hash_password(data['password'])
-    user = User(username=data['username'], email=data['email'], password=hashed_password)
+    user = User(email=data['email'], password=hashed_password)  # 👈 eliminamos username
     db.session.add(user)
     db.session.commit()
+
     return {"message": "Usuario registrado correctamente"}, 201
+
 
 @api_bp.route('/login', methods=['POST'])
 def login():

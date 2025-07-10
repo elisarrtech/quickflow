@@ -12,11 +12,14 @@ def create_app():
     db.init_app(app)
     CORS(app)
 
+    # 🔑 Esta línea crea las tablas si no existen
+    with app.app_context():
+        db.create_all()
+
     # Registro de Blueprints
     from backend.routes import api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
 
-    # Ruta de prueba (para que la raíz no esté vacía)
     @app.route('/')
     def index():
         return {"status": "Backend Flask funcionando correctamente 🚀"}
