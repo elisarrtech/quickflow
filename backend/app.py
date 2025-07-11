@@ -1,16 +1,17 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
-from dotenv import load_dotenv
 import os
 
-# ✅ Cargar variables de entorno desde .env (solo localmente)
-load_dotenv()
+# ✅ Solo carga .env localmente
+if os.environ.get("RENDER") != "true":
+    from dotenv import load_dotenv
+    load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# ✅ Leer la URI desde la variable de entorno
+# 🔑 Cargar la URI desde variables de entorno
 app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 
 # 🔌 Conexión MongoDB
@@ -22,7 +23,7 @@ try:
     print("✅ Conectado exitosamente a MongoDB Atlas")
 except Exception as e:
     print(f"❌ Error al conectar a MongoDB Atlas: {e}")
-    mongo = None  # Evita que el objeto cause errores más adelante
+    mongo = None
 
 
 # ✔ Ruta de prueba
@@ -34,7 +35,7 @@ def home():
 # ✔ Registro de usuarios
 @app.route("/api/register", methods=["POST"])
 def register():
-    if mongo is None:
+    if mongo is None or mongo.db is None:
         return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
     data = request.json
@@ -44,14 +45,13 @@ def register():
 
     users = mongo.db.users
 
-    # Verificar si el usuario ya existe
     if users.find_one({"email": data.get("email")}):
         return jsonify({"error": "El correo ya está registrado"}), 409
 
     users.insert_one({
         "username": data.get("username"),
         "email": data.get("email"),
-        "password": data.get("password")  # ⚠️ Recuerda cifrar la contraseña en producción
+        "password": data.get("password")  # ⚠️ En producción, cifra la contraseña
     })
 
     return jsonify({"message": "Usuario registrado correctamente"}), 201
@@ -60,7 +60,7 @@ def register():
 # ✔ Login de usuarios
 @app.route("/api/login", methods=["POST"])
 def login():
-    if mongo is None:
+    if mongo is None or mongo.db is None:
         return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
     data = request.json
@@ -76,7 +76,6 @@ def login():
     if not user:
         return jsonify({"error": "Usuario no encontrado"}), 404
 
-    # ⚠️ Contraseña sin cifrado (sólo pruebas iniciales)
     if user["password"] != password:
         return jsonify({"error": "Contraseña incorrecta"}), 401
 
