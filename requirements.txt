@@ -1,9 +1,7 @@
-Flask
-Flask-PyMongo
-Flask-Cors
-PyJWT
-Werkzeug
-gunicorn
-
+Flask==3.0.3
+Flask-PyMongo==2.3.0
+Flask-Cors==4.0.1
+gunicorn==23.0.0
+pymongo==4.7.2
 
 
