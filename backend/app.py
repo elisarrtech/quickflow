@@ -1,29 +1,35 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
+import os
+
+# 📦 Importa las funciones de autenticación
+from auth import hash_password, check_password, generate_token
 
 app = Flask(__name__)
 CORS(app)
 
-# 🔑 Conexión a MongoDB Atlas (reemplaza la contraseña por la correcta)
+# 🔑 Configuración de MongoDB Atlas (directa por ahora)
 app.config["MONGO_URI"] = "mongodb+srv://misselisavirtual:Test1234!@cluster0.sv2xrde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# 🔑 Llave secreta para JWT
+app.config['SECRET_KEY'] = 'tu-clave-secreta-aqui'  # Reemplaza esto por una clave segura
 
-# 🔌 Inicializar Mongo
+# 🔌 Conexión MongoDB
 mongo = PyMongo(app)
 
-# ✔ Verificar conexión
+# ✔ Verifica conexión
 try:
     mongo.cx.server_info()
     print("✅ Conectado exitosamente a MongoDB Atlas")
 except Exception as e:
     print("❌ Error al conectar a MongoDB Atlas:", e)
 
-# ✔ Ruta raíz
+# ✔ Ruta de prueba
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
 
-# ✔ Registro
+# ✔ Registro de usuarios con contraseña cifrada
 @app.route("/api/register", methods=["POST"])
 def register():
     data = request.json
@@ -36,15 +42,17 @@ def register():
     if users.find_one({"email": data.get("email")}):
         return jsonify({"error": "El correo ya está registrado"}), 409
 
+    hashed_pw = hash_password(data.get("password"))
+
     users.insert_one({
         "username": data.get("username"),
         "email": data.get("email"),
-        "password": data.get("password")  # ⚠️ Pendiente cifrado
+        "password": hashed_pw
     })
 
     return jsonify({"message": "Usuario registrado correctamente"}), 201
 
-# ✔ Login
+# ✔ Login con validación y token JWT
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.json
@@ -60,11 +68,13 @@ def login():
     if not user:
         return jsonify({"error": "Usuario no encontrado"}), 404
 
-    if user["password"] != password:
+    if not check_password(user["password"], password):
         return jsonify({"error": "Contraseña incorrecta"}), 401
 
-    return jsonify({"message": "Inicio de sesión exitoso", "token": "fake-jwt-token"}), 200
+    token = generate_token(str(user["_id"]))
 
-# ✔ Iniciar la app
+    return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
+
+# ✔ Iniciar app
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
