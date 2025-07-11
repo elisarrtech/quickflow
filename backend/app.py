@@ -25,12 +25,10 @@ except Exception as e:
     print(f"❌ Error al conectar a MongoDB Atlas: {e}")
     mongo = None
 
-
 # ✔ Ruta de prueba
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
-
 
 # ✔ Registro de usuarios
 @app.route("/api/register", methods=["POST"])
@@ -59,31 +57,40 @@ def register():
         return jsonify({"message": "Usuario registrado correctamente"}), 201
 
     except Exception as e:
-        # 🔍 Aquí imprimimos el error exacto que Render mostrará en logs
         print(f"❌ Error interno en /api/register: {e}")
         return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
 
+# ✔ Login de usuarios
+@app.route("/api/login", methods=["POST"])
+def login():
+    try:
+        if mongo is None or mongo.db is None:
+            return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
+        data = request.json
+        email = data.get("email")
+        password = data.get("password")
 
-    if not email or not password:
-        return jsonify({"error": "Datos incompletos"}), 400
+        if not email or not password:
+            return jsonify({"error": "Datos incompletos"}), 400
 
-    users = mongo.db.users
-    user = users.find_one({"email": email})
+        users = mongo.db.users
+        user = users.find_one({"email": email})
 
-    if not user:
-        return jsonify({"error": "Usuario no encontrado"}), 404
+        if not user:
+            return jsonify({"error": "Usuario no encontrado"}), 404
 
-    if user["password"] != password:
-        return jsonify({"error": "Contraseña incorrecta"}), 401
+        if user["password"] != password:
+            return jsonify({"error": "Contraseña incorrecta"}), 401
 
-    # Simulamos un token
-    token = "fake-jwt-token"
+        # Simulamos un token
+        token = "fake-jwt-token"
 
-    return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
+        return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
+
+    except Exception as e:
+        print(f"❌ Error interno en /api/login: {e}")
+        return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
 
 
 if __name__ == "__main__":
