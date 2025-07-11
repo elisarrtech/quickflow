@@ -71,7 +71,9 @@ def register():
 def login():
     try:
         if mongo is None or mongo.db is None:
-            return jsonify({"error": "Error de conexión con la base de datos"}), 500
+    print("❌ Mongo no está conectado")
+    return jsonify({"error": "Error de conexión con la base de datos"}), 500
+
 
         data = request.json
         email = data.get("email")
