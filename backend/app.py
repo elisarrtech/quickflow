@@ -35,33 +35,34 @@ def home():
 # ✔ Registro de usuarios
 @app.route("/api/register", methods=["POST"])
 def register():
-    if mongo is None or mongo.db is None:
-        return jsonify({"error": "Error de conexión con la base de datos"}), 500
+    try:
+        if mongo is None or mongo.db is None:
+            return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
-    data = request.json
+        data = request.json
 
-    if not data or not data.get("username") or not data.get("email") or not data.get("password"):
-        return jsonify({"error": "Datos incompletos"}), 400
+        if not data or not data.get("username") or not data.get("email") or not data.get("password"):
+            return jsonify({"error": "Datos incompletos"}), 400
 
-    users = mongo.db.users
+        users = mongo.db.users
 
-    if users.find_one({"email": data.get("email")}):
-        return jsonify({"error": "El correo ya está registrado"}), 409
+        # Verificar si el usuario ya existe
+        if users.find_one({"email": data.get("email")}):
+            return jsonify({"error": "El correo ya está registrado"}), 409
 
-    users.insert_one({
-        "username": data.get("username"),
-        "email": data.get("email"),
-        "password": data.get("password")  # ⚠️ En producción, cifra la contraseña
-    })
+        users.insert_one({
+            "username": data.get("username"),
+            "email": data.get("email"),
+            "password": data.get("password")
+        })
 
-    return jsonify({"message": "Usuario registrado correctamente"}), 201
+        return jsonify({"message": "Usuario registrado correctamente"}), 201
 
+    except Exception as e:
+        # 🔍 Aquí imprimimos el error exacto que Render mostrará en logs
+        print(f"❌ Error interno en /api/register: {e}")
+        return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
 
-# ✔ Login de usuarios
-@app.route("/api/login", methods=["POST"])
-def login():
-    if mongo is None or mongo.db is None:
-        return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
     data = request.json
     email = data.get("email")
