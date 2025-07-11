@@ -1,39 +1,42 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
+from dotenv import load_dotenv
 import os
 
-# 📦 Importa las funciones de autenticación
-from backend.auth import hash_password, check_password, generate_token
+# ✅ Cargar variables de entorno desde .env (solo localmente)
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# 🔑 Configuración de MongoDB Atlas (directa por ahora)
-app.config["MONGO_URI"] = "mongodb+srv://misselisavirtual:Test1234@cluster0.sv2xrde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
-
-# 🔑 Llave secreta para JWT
-app.config['SECRET_KEY'] = 'tu-clave-secreta-aqui'  # Reemplaza esto por una clave segura
+# ✅ Leer la URI desde la variable de entorno
+app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 
 # 🔌 Conexión MongoDB
 mongo = PyMongo(app)
 
-# ✔ Verifica conexión
+# ✔ Verificar conexión inicial
 try:
     mongo.cx.server_info()
     print("✅ Conectado exitosamente a MongoDB Atlas")
 except Exception as e:
-    print("❌ Error al conectar a MongoDB Atlas:", e)
+    print(f"❌ Error al conectar a MongoDB Atlas: {e}")
+    mongo = None  # Evita que el objeto cause errores más adelante
+
 
 # ✔ Ruta de prueba
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
 
-# ✔ Registro de usuarios con contraseña cifrada
+
+# ✔ Registro de usuarios
 @app.route("/api/register", methods=["POST"])
 def register():
+    if mongo is None:
+        return jsonify({"error": "Error de conexión con la base de datos"}), 500
+
     data = request.json
 
     if not data or not data.get("username") or not data.get("email") or not data.get("password"):
@@ -41,22 +44,25 @@ def register():
 
     users = mongo.db.users
 
+    # Verificar si el usuario ya existe
     if users.find_one({"email": data.get("email")}):
         return jsonify({"error": "El correo ya está registrado"}), 409
-
-    hashed_pw = hash_password(data.get("password"))
 
     users.insert_one({
         "username": data.get("username"),
         "email": data.get("email"),
-        "password": hashed_pw
+        "password": data.get("password")  # ⚠️ Recuerda cifrar la contraseña en producción
     })
 
     return jsonify({"message": "Usuario registrado correctamente"}), 201
 
-# ✔ Login con validación y token JWT
+
+# ✔ Login de usuarios
 @app.route("/api/login", methods=["POST"])
 def login():
+    if mongo is None:
+        return jsonify({"error": "Error de conexión con la base de datos"}), 500
+
     data = request.json
     email = data.get("email")
     password = data.get("password")
@@ -70,13 +76,15 @@ def login():
     if not user:
         return jsonify({"error": "Usuario no encontrado"}), 404
 
-    if not check_password(user["password"], password):
+    # ⚠️ Contraseña sin cifrado (sólo pruebas iniciales)
+    if user["password"] != password:
         return jsonify({"error": "Contraseña incorrecta"}), 401
 
-    token = generate_token(str(user["_id"]))
+    # Simulamos un token
+    token = "fake-jwt-token"
 
     return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
 
-# ✔ Iniciar app
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
