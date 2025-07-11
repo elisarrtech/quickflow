@@ -3,7 +3,7 @@ from flask_pymongo import PyMongo
 from flask_cors import CORS
 import os
 
-# ✅ Solo carga dotenv localmente
+# Solo carga dotenv localmente
 if os.environ.get("RENDER") != "true":
     from dotenv import load_dotenv
     load_dotenv()
@@ -11,47 +11,49 @@ if os.environ.get("RENDER") != "true":
 app = Flask(__name__)
 CORS(app)
 
-# 🔑 URI desde variables de entorno
+# URI desde variables de entorno
 app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 
-# 🔌 Conexión MongoDB
-mongo = PyMongo(app)
-
-# ✔ Verificar conexión inicial
+# Conexión MongoDB
 try:
+    mongo = PyMongo(app)
     mongo.cx.server_info()
     print("✅ Conectado exitosamente a MongoDB Atlas")
 except Exception as e:
     print(f"❌ Error al conectar a MongoDB Atlas: {e}")
-    # No asignar mongo = None, solo logueamos el error
+    mongo = None  # ⚠️ Importante
 
-# ✔ Ruta de prueba
+# Ruta de prueba
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
 
-# ✔ Registro de usuarios
+# Registro de usuarios
 @app.route("/api/register", methods=["POST"])
 def register():
-    print("👉 Ingresando a /api/register")  # Mensaje de prueba inicial
+    print("👉 Ingresando a /api/register")
     try:
+        if mongo is None or mongo.db is None:
+            print("❌ Mongo no está conectado")
+            return jsonify({"error": "Error de conexión con la base de datos"}), 500
+
         data = request.json
         print(f"📥 Datos recibidos: {data}")
 
-        if not data or not data.get("username") or not data.get("email") or not data.get("password"):
+        if not data.get("username") or not data.get("email") or not data.get("password"):
             print("⚠️ Datos incompletos")
             return jsonify({"error": "Datos incompletos"}), 400
 
         users = mongo.db.users
 
-        if users.find_one({"email": data.get("email")}):
+        if users.find_one({"email": data["email"]}):
             print("⚠️ El correo ya existe")
             return jsonify({"error": "El correo ya está registrado"}), 409
 
         users.insert_one({
-            "username": data.get("username"),
-            "email": data.get("email"),
-            "password": data.get("password")
+            "username": data["username"],
+            "email": data["email"],
+            "password": data["password"]
         })
 
         print("✅ Usuario registrado con éxito")
@@ -61,10 +63,14 @@ def register():
         print(f"❌ Error interno en /api/register: {e}")
         return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
 
-# ✔ Login de usuarios
+# Login de usuarios
 @app.route("/api/login", methods=["POST"])
 def login():
     try:
+        if mongo is None or mongo.db is None:
+            print("❌ Mongo no está conectado")
+            return jsonify({"error": "Error de conexión con la base de datos"}), 500
+
         data = request.json
         email = data.get("email")
         password = data.get("password")
