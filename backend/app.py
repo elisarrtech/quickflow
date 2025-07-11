@@ -4,7 +4,7 @@ from flask_cors import CORS
 import os
 
 # 📦 Importa las funciones de autenticación
-from auth import hash_password, check_password, generate_token
+from backend.auth import hash_password, check_password, generate_token
 
 app = Flask(__name__)
 CORS(app)
