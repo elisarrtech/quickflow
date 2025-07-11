@@ -1,27 +1,68 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, request, jsonify
+from flask_pymongo import PyMongo
 from flask_cors import CORS
-from backend.config import Config
+import os
 
-db = SQLAlchemy()
+app = Flask(__name__)
+CORS(app)
 
-def create_app():
-    app = Flask(__name__)
-    app.config.from_object(Config)
+# 🔑 Leer la URI desde variables de entorno (para Render)
+app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 
-    db.init_app(app)
-    CORS(app)
+# 🔌 Conexión MongoDB
+mongo = PyMongo(app)
 
-    # 🔑 Esta línea crea las tablas si no existen
-    with app.app_context():
-        db.create_all()
+# ✔ Ruta de prueba
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
 
-    # Registro de Blueprints
-    from backend.routes import api_bp
-    app.register_blueprint(api_bp, url_prefix='/api')
+# ✔ Registro de usuarios
+@app.route("/api/register", methods=["POST"])
+def register():
+    data = request.json
 
-    @app.route('/')
-    def index():
-        return {"status": "Backend Flask funcionando correctamente 🚀"}
+    if not data or not data.get("username") or not data.get("email") or not data.get("password"):
+        return jsonify({"error": "Datos incompletos"}), 400
 
-    return app
+    users = mongo.db.users
+
+    # Verifica si el usuario ya existe
+    if users.find_one({"email": data.get("email")}):
+        return jsonify({"error": "El correo ya está registrado"}), 409
+
+    users.insert_one({
+        "username": data.get("username"),
+        "email": data.get("email"),
+        "password": data.get("password")  # ⚠️ En producción, cifra la contraseña
+    })
+
+    return jsonify({"message": "Usuario registrado correctamente"}), 201
+
+# ✔ Login de usuarios
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Datos incompletos"}), 400
+
+    users = mongo.db.users
+    user = users.find_one({"email": email})
+
+    if not user:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    # ⚠️ Contraseña sin cifrado (solo para pruebas iniciales)
+    if user["password"] != password:
+        return jsonify({"error": "Contraseña incorrecta"}), 401
+
+    # Simulamos un token
+    token = "fake-jwt-token"
+
+    return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
