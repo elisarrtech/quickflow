@@ -10,7 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 # 🔑 Configuración de MongoDB Atlas (directa por ahora)
-app.config["MONGO_URI"] = "mongodb+srv://misselisavirtual:Test1234!@cluster0.sv2xrde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+app.config["MONGO_URI"] = "mongodb+srv://misselisavirtual:Test1234@cluster0.sv2xrde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+
 # 🔑 Llave secreta para JWT
 app.config['SECRET_KEY'] = 'tu-clave-secreta-aqui'  # Reemplaza esto por una clave segura
 
