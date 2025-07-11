@@ -23,7 +23,8 @@ try:
     print("✅ Conectado exitosamente a MongoDB Atlas")
 except Exception as e:
     print(f"❌ Error al conectar a MongoDB Atlas: {e}")
-    mongo = None
+    # No asignar mongo = None, solo logueamos el error
+
 
 # ✔ Ruta de prueba
 @app.route("/", methods=["GET"])
