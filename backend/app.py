@@ -25,7 +25,6 @@ except Exception as e:
     print(f"❌ Error al conectar a MongoDB Atlas: {e}")
     # No asignar mongo = None, solo logueamos el error
 
-
 # ✔ Ruta de prueba
 @app.route("/", methods=["GET"])
 def home():
@@ -36,10 +35,6 @@ def home():
 def register():
     print("👉 Ingresando a /api/register")  # Mensaje de prueba inicial
     try:
-        if mongo is None or mongo.db is None:
-            print("❌ Mongo no está conectado")
-            return jsonify({"error": "Error de conexión con la base de datos"}), 500
-
         data = request.json
         print(f"📥 Datos recibidos: {data}")
 
@@ -70,11 +65,6 @@ def register():
 @app.route("/api/login", methods=["POST"])
 def login():
     try:
-        if mongo is None or mongo.db is None:
-    print("❌ Mongo no está conectado")
-    return jsonify({"error": "Error de conexión con la base de datos"}), 500
-
-
         data = request.json
         email = data.get("email")
         password = data.get("password")
