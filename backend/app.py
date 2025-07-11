@@ -7,8 +7,17 @@ app = Flask(__name__)
 CORS(app)
 
 # 🔑 Leer la URI desde variables de entorno (para Render)
-# app.py
 app.config["MONGO_URI"] = "mongodb+srv://misselisavirtual:QOcz4mDj2bx01D3l@cluster0.sv2xrde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+mongo = PyMongo(app)
+
+# Verificación inmediata
+try:
+    mongo.cx.server_info()  # cx = client connection
+    print("✅ Conectado exitosamente a MongoDB Atlas")
+except Exception as e:
+    print("❌ Error al conectar a MongoDB Atlas:", e)
+
 
 
 # 🔌 Conexión MongoDB
