@@ -7,7 +7,8 @@ app = Flask(__name__)
 CORS(app)
 
 # 🔑 Leer la URI desde variables de entorno (para Render)
-app.config["MONGO_URI"] = "mongodb+srv://misselisavirtual:QOcz4mDj2bx01D3l@cluster0.sv2xrde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+app.config["MONGO_URI"] = "mongodb+srv://misselisavirtual:Test1234!@cluster0.sv2xrde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
 
 mongo = PyMongo(app)
 
