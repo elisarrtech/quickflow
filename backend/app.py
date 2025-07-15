@@ -3,106 +3,108 @@ from flask_pymongo import PyMongo
 from flask_cors import CORS
 import os
 
-# ✅ Cargar variables desde .env si no está en Render
-if os.environ.get("RENDER") != "true":
-    from dotenv import load_dotenv
-    load_dotenv()
+mongo = PyMongo()
 
-# --- Crear app y permitir CORS ---
-app = Flask(__name__)
-CORS(app)
+def create_app():
+    app = Flask(__name__)
+    CORS(app)
 
-# --- Configurar Mongo ---
-MONGO_URI = os.getenv("MONGO_URI")
-if not MONGO_URI:
-    print("❌ MONGO_URI no está definido")
-    mongo = None
-else:
-    app.config["MONGO_URI"] = MONGO_URI
-    mongo = PyMongo()
-    try:
-        with app.app_context():
-            mongo.init_app(app)
-            mongo.cx.server_info()  # Prueba de conexión
-            print("✅ Conectado exitosamente a MongoDB Atlas")
-    except Exception as e:
-        print(f"❌ Error al conectar a MongoDB Atlas: {e}")
-        mongo = None
+    # Cargar variables locales si no estamos en Render
+    if os.environ.get("RENDER") != "true":
+        from dotenv import load_dotenv
+        load_dotenv()
 
-# --- Rutas ---
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
+    MONGO_URI = os.getenv("MONGO_URI")
+    if not MONGO_URI:
+        print("❌ MONGO_URI no está definido")
+    else:
+        app.config["MONGO_URI"] = MONGO_URI
+        mongo.init_app(app)
+        try:
+            with app.app_context():
+                mongo.cx.server_info()
+                print("✅ Conectado exitosamente a MongoDB Atlas")
+        except Exception as e:
+            print(f"❌ Error al conectar a MongoDB Atlas: {e}")
 
-@app.route("/api/register", methods=["POST"])
-def register():
-    print("👉 Ingresando a /api/register")
-    try:
-        if not mongo or not mongo.db:
-            print("❌ Mongo no está conectado")
-            return jsonify({"error": "Error de conexión con la base de datos"}), 500
+    # === Rutas ===
+    @app.route("/", methods=["GET"])
+    def home():
+        return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
 
-        data = request.json
-        print(f"📥 Datos recibidos: {data}")
+    @app.route("/api/register", methods=["POST"])
+    def register():
+        print("👉 Ingresando a /api/register")
+        try:
+            if not mongo or not mongo.db:
+                print("❌ Mongo no está conectado")
+                return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
-        email = data.get("email")
-        password = data.get("password")
-        username = data.get("username") or email
+            data = request.json
+            print(f"📥 Datos recibidos: {data}")
 
-        if not email or not password:
-            print("⚠️ Datos incompletos")
-            return jsonify({"error": "Datos incompletos"}), 400
+            email = data.get("email")
+            password = data.get("password")
+            username = data.get("username") or email
 
-        users = mongo.db.users
+            if not email or not password:
+                print("⚠️ Datos incompletos")
+                return jsonify({"error": "Datos incompletos"}), 400
 
-        if users.find_one({"email": email}):
-            print("⚠️ El correo ya está registrado")
-            return jsonify({"error": "El correo ya está registrado"}), 409
+            users = mongo.db.users
 
-        users.insert_one({
-            "username": username,
-            "email": email,
-            "password": password  # ⚠️ en producción deberías cifrar
-        })
+            if users.find_one({"email": email}):
+                print("⚠️ El correo ya está registrado")
+                return jsonify({"error": "El correo ya está registrado"}), 409
 
-        print("✅ Usuario registrado con éxito")
-        return jsonify({"message": "Usuario registrado correctamente"}), 201
+            users.insert_one({
+                "username": username,
+                "email": email,
+                "password": password  # ⚠️ pendiente cifrado
+            })
 
-    except Exception as e:
-        print(f"❌ Error interno en /api/register: {e}")
-        return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
+            print("✅ Usuario registrado con éxito")
+            return jsonify({"message": "Usuario registrado correctamente"}), 201
 
-@app.route("/api/login", methods=["POST"])
-def login():
-    try:
-        if not mongo or not mongo.db:
-            print("❌ Mongo no está conectado")
-            return jsonify({"error": "Error de conexión con la base de datos"}), 500
+        except Exception as e:
+            print(f"❌ Error interno en /api/register: {e}")
+            return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
 
-        data = request.json
-        email = data.get("email")
-        password = data.get("password")
+    @app.route("/api/login", methods=["POST"])
+    def login():
+        try:
+            if not mongo or not mongo.db:
+                print("❌ Mongo no está conectado")
+                return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
-        if not email or not password:
-            return jsonify({"error": "Datos incompletos"}), 400
+            data = request.json
+            email = data.get("email")
+            password = data.get("password")
 
-        users = mongo.db.users
-        user = users.find_one({"email": email})
+            if not email or not password:
+                return jsonify({"error": "Datos incompletos"}), 400
 
-        if not user:
-            return jsonify({"error": "Usuario no encontrado"}), 404
+            users = mongo.db.users
+            user = users.find_one({"email": email})
 
-        if user["password"] != password:
-            return jsonify({"error": "Contraseña incorrecta"}), 401
+            if not user:
+                return jsonify({"error": "Usuario no encontrado"}), 404
 
-        token = "fake-jwt-token"
+            if user["password"] != password:
+                return jsonify({"error": "Contraseña incorrecta"}), 401
 
-        return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
+            token = "fake-jwt-token"
+            return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
 
-    except Exception as e:
-        print(f"❌ Error interno en /api/login: {e}")
-        return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
+        except Exception as e:
+            print(f"❌ Error interno en /api/login: {e}")
+            return jsonify({"error": "Error interno en el servidor", "details": str(e)}), 500
 
-# --- Main local ---
+    return app
+
+# Gunicorn usa esto
+app = create_app()
+
+# Solo para desarrollo local
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
