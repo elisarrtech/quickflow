@@ -3,32 +3,33 @@ from flask_pymongo import PyMongo
 from flask_cors import CORS
 import os
 
+# Extensión global de PyMongo (sin app)
+mongo = PyMongo()
+
 def create_app():
     app = Flask(__name__)
     CORS(app)
 
-    # Cargar .env local si no es producción
+    # Cargar .env si no es entorno Render
     if os.environ.get("RENDER") != "true":
         from dotenv import load_dotenv
         load_dotenv()
 
-    # Configurar Mongo
+    # Configuración de Mongo
     MONGO_URI = os.getenv("MONGO_URI")
     if not MONGO_URI:
         print("❌ MONGO_URI no está definido")
-        app.mongo = None
     else:
         app.config["MONGO_URI"] = MONGO_URI
-        mongo = PyMongo(app)
-        app.mongo = mongo
+        mongo.init_app(app)
 
+        # Validar conexión solo en contexto
         try:
             with app.app_context():
                 mongo.cx.server_info()
                 print("✅ Conectado exitosamente a MongoDB Atlas")
         except Exception as e:
             print(f"❌ Error al conectar a MongoDB Atlas: {e}")
-            app.mongo = None
 
     # === RUTAS ===
     @app.route("/", methods=["GET"])
@@ -38,10 +39,11 @@ def create_app():
     @app.route("/api/register", methods=["POST"])
     def register():
         print("👉 Ingresando a /api/register")
-        mongo = app.mongo
-        if not mongo or not mongo.db:
+        try:
+            db = mongo.db
+        except Exception as e:
             print("❌ Mongo no está conectado")
-            return jsonify({"error": "Error de conexión con la base de datos"}), 500
+            return jsonify({"error": "Error de conexión con MongoDB"}), 500
 
         data = request.json
         print(f"📥 Datos recibidos: {data}")
@@ -51,30 +53,26 @@ def create_app():
         username = data.get("username") or email
 
         if not email or not password:
-            print("⚠️ Datos incompletos")
             return jsonify({"error": "Datos incompletos"}), 400
 
-        users = mongo.db.users
-
-        if users.find_one({"email": email}):
-            print("⚠️ El correo ya está registrado")
+        if db.users.find_one({"email": email}):
             return jsonify({"error": "El correo ya está registrado"}), 409
 
-        users.insert_one({
+        db.users.insert_one({
             "username": username,
             "email": email,
             "password": password
         })
 
-        print("✅ Usuario registrado con éxito")
         return jsonify({"message": "Usuario registrado correctamente"}), 201
 
     @app.route("/api/login", methods=["POST"])
     def login():
-        mongo = app.mongo
-        if not mongo or not mongo.db:
+        try:
+            db = mongo.db
+        except Exception as e:
             print("❌ Mongo no está conectado")
-            return jsonify({"error": "Error de conexión con la base de datos"}), 500
+            return jsonify({"error": "Error de conexión con MongoDB"}), 500
 
         data = request.json
         email = data.get("email")
@@ -83,8 +81,7 @@ def create_app():
         if not email or not password:
             return jsonify({"error": "Datos incompletos"}), 400
 
-        users = mongo.db.users
-        user = users.find_one({"email": email})
+        user = db.users.find_one({"email": email})
 
         if not user:
             return jsonify({"error": "Usuario no encontrado"}), 404
@@ -92,11 +89,11 @@ def create_app():
         if user["password"] != password:
             return jsonify({"error": "Contraseña incorrecta"}), 401
 
-        token = "fake-jwt-token"
-        return jsonify({"message": "Inicio de sesión exitoso", "token": token}), 200
+        return jsonify({"message": "Inicio de sesión exitoso", "token": "fake-jwt-token"}), 200
 
     return app
 
+# Inicialización con Gunicorn
 app = create_app()
 
 if __name__ == "__main__":
