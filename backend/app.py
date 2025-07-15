@@ -2,99 +2,89 @@ from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
 import os
+import jwt
+import datetime
 
-# Extensión global de PyMongo (sin app)
-mongo = PyMongo()
+# --- CARGAR VARIABLES DE ENTORNO SI NO ES DEPLOY EN RENDER ---
+if os.environ.get("RENDER") != "true":
+    from dotenv import load_dotenv
+    load_dotenv()
 
-def create_app():
-    app = Flask(__name__)
-    CORS(app)
+# --- CONFIGURACIÓN DE LA APLICACIÓN ---
+app = Flask(__name__)
+CORS(app)
 
-    # Cargar .env si no es entorno Render
-    if os.environ.get("RENDER") != "true":
-        from dotenv import load_dotenv
-        load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
+SECRET_KEY = os.getenv("SECRET_KEY", "supersecreto")
 
-    # Configuración de Mongo
-    MONGO_URI = os.getenv("MONGO_URI")
-    if not MONGO_URI:
-        print("❌ MONGO_URI no está definido")
-    else:
-        app.config["MONGO_URI"] = MONGO_URI
-        mongo.init_app(app)
+if not MONGO_URI:
+    print("❌ MONGO_URI no está definido")
+    mongo = None
+else:
+    app.config["MONGO_URI"] = MONGO_URI
+    mongo = PyMongo(app)
 
-        # Validar conexión solo en contexto
-        try:
-            with app.app_context():
-                mongo.cx.server_info()
-                print("✅ Conectado exitosamente a MongoDB Atlas")
-        except Exception as e:
-            print(f"❌ Error al conectar a MongoDB Atlas: {e}")
+    try:
+        mongo.cx.server_info()  # Verifica conexión
+        print("✅ Conectado exitosamente a MongoDB Atlas")
+    except Exception as e:
+        print(f"❌ Error al conectar a MongoDB Atlas: {e}")
+        mongo = None
 
-    # === RUTAS ===
-    @app.route("/", methods=["GET"])
-    def home():
-        return jsonify({"message": "Quickflow API funcionando correctamente"}), 200
+# --- RUTA RAÍZ ---
+@app.route("/")
+def home():
+    return "API funcionando correctamente ✅"
 
-    @app.route("/api/register", methods=["POST"])
-    def register():
-        print("👉 Ingresando a /api/register")
-        try:
-            db = mongo.db
-        except Exception as e:
-            print("❌ Mongo no está conectado")
-            return jsonify({"error": "Error de conexión con MongoDB"}), 500
+# --- REGISTRO DE USUARIO ---
+@app.route("/api/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    print("👉 Ingresando a /api/register")
+    print("📥 Datos recibidos:", data)
 
-        data = request.json
-        print(f"📥 Datos recibidos: {data}")
+    email = data.get("email")
+    password = data.get("password")
 
-        email = data.get("email")
-        password = data.get("password")
-        username = data.get("username") or email
+    if not mongo or not mongo.db:
+        print("❌ Mongo no está conectado")
+        return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
-        if not email or not password:
-            return jsonify({"error": "Datos incompletos"}), 400
+    users = mongo.db.users
 
-        if db.users.find_one({"email": email}):
-            return jsonify({"error": "El correo ya está registrado"}), 409
+    if users.find_one({"email": email}):
+        return jsonify({"error": "El correo ya está registrado"}), 400
 
-        db.users.insert_one({
-            "username": username,
-            "email": email,
-            "password": password
-        })
+    users.insert_one({"email": email, "password": password})
+    return jsonify({"message": "Registro exitoso"}), 201
 
-        return jsonify({"message": "Usuario registrado correctamente"}), 201
+# --- INICIO DE SESIÓN ---
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    print("👉 Ingresando a /api/login")
+    print("📥 Datos recibidos:", data)
 
-    @app.route("/api/login", methods=["POST"])
-    def login():
-        try:
-            db = mongo.db
-        except Exception as e:
-            print("❌ Mongo no está conectado")
-            return jsonify({"error": "Error de conexión con MongoDB"}), 500
+    email = data.get("email")
+    password = data.get("password")
 
-        data = request.json
-        email = data.get("email")
-        password = data.get("password")
+    if not mongo or not mongo.db:
+        print("❌ Mongo no está conectado")
+        return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
-        if not email or not password:
-            return jsonify({"error": "Datos incompletos"}), 400
+    users = mongo.db.users
+    user = users.find_one({"email": email})
 
-        user = db.users.find_one({"email": email})
+    if not user or user.get("password") != password:
+        return jsonify({"error": "Credenciales inválidas"}), 401
 
-        if not user:
-            return jsonify({"error": "Usuario no encontrado"}), 404
+    token = jwt.encode({
+        "email": email,
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+    }, SECRET_KEY, algorithm="HS256")
 
-        if user["password"] != password:
-            return jsonify({"error": "Contraseña incorrecta"}), 401
+    return jsonify({"token": token})
 
-        return jsonify({"message": "Inicio de sesión exitoso", "token": "fake-jwt-token"}), 200
-
-    return app
-
-# Inicialización con Gunicorn
-app = create_app()
-
+# --- MAIN ---
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, port=5000)
