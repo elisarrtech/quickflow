@@ -46,20 +46,24 @@ def register():
         data = request.json
         print(f"📥 Datos recibidos: {data}")
 
-        if not data or not data.get("username") or not data.get("email") or not data.get("password"):
+        email = data.get("email")
+        password = data.get("password")
+        username = data.get("username") or email  # ✅ Usar email si username está vacío
+
+        if not email or not password:
             print("⚠️ Datos incompletos")
             return jsonify({"error": "Datos incompletos"}), 400
 
         users = mongo.db.users
 
-        if users.find_one({"email": data.get("email")}):
+        if users.find_one({"email": email}):
             print("⚠️ El correo ya está registrado")
             return jsonify({"error": "El correo ya está registrado"}), 409
 
         users.insert_one({
-            "username": data.get("username"),
-            "email": data.get("email"),
-            "password": data.get("password")  # ⚠️ Cifrar en producción
+            "username": username,
+            "email": email,
+            "password": password  # ⚠️ En producción deberías cifrar
         })
 
         print("✅ Usuario registrado con éxito")
