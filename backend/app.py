@@ -46,7 +46,7 @@ def register():
     email = data.get("email")
     password = data.get("password")
 
-    if not mongo or not mongo.db:
+    if mongo is None or mongo.db is None:
         print("❌ Mongo no está conectado")
         return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
@@ -58,6 +58,7 @@ def register():
     users.insert_one({"email": email, "password": password})
     return jsonify({"message": "Registro exitoso"}), 201
 
+
 # --- INICIO DE SESIÓN ---
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -68,7 +69,7 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
-    if not mongo or not mongo.db:
+    if mongo is None or mongo.db is None:
         print("❌ Mongo no está conectado")
         return jsonify({"error": "Error de conexión con la base de datos"}), 500
 
