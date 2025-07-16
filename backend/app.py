@@ -14,6 +14,10 @@ if os.environ.get("RENDER") != "true":
 app = Flask(__name__)
 CORS(app)
 
+from routes.tasks import tasks_bp
+app.register_blueprint(tasks_bp)
+
+
 MONGO_URI = os.getenv("MONGO_URI")
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecreto")
 
