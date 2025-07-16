@@ -1,16 +1,14 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from bson.objectid import ObjectId
-from flask_pymongo import PyMongo
 from datetime import datetime
 
 tasks_bp = Blueprint("tasks", __name__)
 
 def get_db():
-    from app import mongo
-    return mongo.db.tareas
+    return current_app.mongo.db.tareas
 
 # Crear una tarea
-@tasks_bp.route("/api/tasks", methods=["POST"])
+@tasks_bp.route("/", methods=["POST"])
 def crear_tarea():
     data = request.get_json()
     tarea = {
@@ -26,7 +24,7 @@ def crear_tarea():
     return jsonify(tarea), 201
 
 # Obtener todas las tareas
-@tasks_bp.route("/api/tasks", methods=["GET"])
+@tasks_bp.route("/", methods=["GET"])
 def obtener_tareas():
     db = get_db()
     tareas = list(db.find())
@@ -35,7 +33,7 @@ def obtener_tareas():
     return jsonify(tareas)
 
 # Actualizar tarea por ID
-@tasks_bp.route("/api/tasks/<id>", methods=["PUT"])
+@tasks_bp.route("/<id>", methods=["PUT"])
 def actualizar_tarea(id):
     data = request.get_json()
     db = get_db()
@@ -43,7 +41,7 @@ def actualizar_tarea(id):
     return jsonify({"message": "Tarea actualizada"}), 200
 
 # Eliminar tarea por ID
-@tasks_bp.route("/api/tasks/<id>", methods=["DELETE"])
+@tasks_bp.route("/<id>", methods=["DELETE"])
 def eliminar_tarea(id):
     db = get_db()
     db.delete_one({"_id": ObjectId(id)})
