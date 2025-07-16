@@ -38,7 +38,7 @@ else:
 app.mongo = mongo
 
 # --- IMPORTACIÓN Y REGISTRO DE BLUEPRINTS ---
-from routes.tasks import tasks_bp
+from routes.tasks import tasks_bp  # ✅ Correcto según tu estructura
 app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
 
 # --- RUTA RAÍZ ---
