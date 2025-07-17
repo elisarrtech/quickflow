@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from bson.objectid import ObjectId
 from datetime import datetime
-from auth_utils import token_required  # 👈 Importa el decorador
+from backend.auth_utils import token_required  # 👈 Importa el decorador
 
 tasks_bp = Blueprint("tasks", __name__)
 
