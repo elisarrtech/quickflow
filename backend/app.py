@@ -43,5 +43,8 @@ app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
 def home():
     return "API Quickflow funcionando ✅"
 
+
+# --- MAIN LOCAL ---
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5000)
+
