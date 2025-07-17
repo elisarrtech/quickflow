@@ -1,7 +1,9 @@
 import jwt
 from datetime import datetime, timedelta
 from flask import current_app
+from werkzeug.security import generate_password_hash, check_password_hash  # 🔒 Importación clave
 
+# --- JWT ---
 def generate_token(email, expires_in=7200):
     payload = {
         "email": email,
@@ -20,3 +22,10 @@ def verify_token(token):
     except jwt.InvalidTokenError:
         print("❌ Token inválido")
         return None
+
+# --- PASSWORD HASHING ---
+def hash_password(password):
+    return generate_password_hash(password)
+
+def check_password(hashed_password, password):
+    return check_password_hash(hashed_password, password)
