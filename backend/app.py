@@ -1,87 +1,69 @@
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
-from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 import os
 import jwt
 
-# --- CARGAR VARIABLES DE ENTORNO SI NO ES DEPLOY EN RENDER ---
+# --- CARGAR VARIABLES DE ENTORNO ---
 if os.environ.get("RENDER") != "true":
     from dotenv import load_dotenv
     load_dotenv()
 
-# --- CONFIGURACIÓN DE LA APLICACIÓN ---
+# --- CONFIGURACIÓN FLASK ---
 app = Flask(__name__)
 
-# ✅ Habilita CORS con todos los métodos permitidos
-CORS(app, origins=["https://peppy-starlight-fd4c37.netlify.app"], 
-     supports_credentials=True,
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization"])
+# ✅ CORS robusto (Netlify o abierto para desarrollo)
+CORS(app, resources={r"/api/*": {"origins": "https://peppy-starlight-fd4c37.netlify.app"}}, supports_credentials=True)
 
-
-# --- CONFIGURACIÓN DE MONGO Y SECRET_KEY ---
+# --- CONFIGURACIÓN MONGO ---
 MONGO_URI = os.getenv("MONGO_URI")
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecreto")
 
 if not MONGO_URI:
-    print("❌ MONGO_URI no está definido")
+    print("❌ MONGO_URI no definido")
     mongo = None
 else:
     app.config["MONGO_URI"] = MONGO_URI
     mongo = PyMongo(app)
-
     try:
         mongo.cx.server_info()
-        print("✅ Conectado exitosamente a MongoDB Atlas")
+        print("✅ Conectado a MongoDB Atlas")
     except Exception as e:
-        print(f"❌ Error al conectar a MongoDB Atlas: {e}")
+        print(f"❌ Error al conectar: {e}")
         mongo = None
 
-# --- Hacer mongo accesible globalmente ---
 app.mongo = mongo
 
-# --- IMPORTAR Y REGISTRAR BLUEPRINTS ---
+# --- BLUEPRINTS ---
 from backend.routes.tasks import tasks_bp
-from flask_cors import CORS as BlueprintCORS  # para usarlo en blueprints también
-
-# ✅ CORS SOBRE EL BLUEPRINT (muy importante para tareas)
-BlueprintCORS(tasks_bp, origins="https://peppy-starlight-fd4c37.netlify.app", supports_credentials=True)
-
 app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
 
-# --- RUTA DE PRUEBA ---
-@app.route("/")
-def home():
-    return "API funcionando correctamente ✅"
-
-# --- REGISTRO DE USUARIO ---
+# --- RUTAS DE AUTENTICACIÓN ---
 @app.route("/api/register", methods=["POST"])
 def register():
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
 
-    if mongo is None or mongo.db is None:
-        return jsonify({"error": "Error de conexión con la base de datos"}), 500
+    if not mongo or not mongo.db:
+        return jsonify({"error": "Error de base de datos"}), 500
 
     users = mongo.db.users
     if users.find_one({"email": email}):
-        return jsonify({"error": "El correo ya está registrado"}), 400
+        return jsonify({"error": "Correo ya registrado"}), 400
 
     users.insert_one({"email": email, "password": password})
     return jsonify({"message": "Registro exitoso"}), 201
 
-# --- INICIO DE SESIÓN ---
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
 
-    if mongo is None or mongo.db is None:
-        return jsonify({"error": "Error de conexión con la base de datos"}), 500
+    if not mongo or not mongo.db:
+        return jsonify({"error": "Error de base de datos"}), 500
 
     users = mongo.db.users
     user = users.find_one({"email": email})
@@ -95,6 +77,10 @@ def login():
     }, SECRET_KEY, algorithm="HS256")
 
     return jsonify({"token": token})
+
+@app.route("/", methods=["GET"])
+def index():
+    return "✅ API funcionando correctamente"
 
 # --- MAIN LOCAL ---
 if __name__ == "__main__":
