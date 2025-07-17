@@ -33,8 +33,8 @@ except Exception as e:
     print("❌ Error al conectar a MongoDB:", e)
 
 # Blueprints
-from routes.auth import auth_bp
-from routes.tasks import tasks_bp
+from backend.routes.auth import auth_bp
+from backend.routes.tasks import tasks_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
