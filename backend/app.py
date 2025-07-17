@@ -14,8 +14,12 @@ if os.environ.get("RENDER") != "true":
 # --- CONFIGURACIÓN DE LA APLICACIÓN ---
 app = Flask(__name__)
 
-# ✅ CORS GLOBAL (Frontend Netlify)
-CORS(app, origins=["https://peppy-starlight-fd4c37.netlify.app"], supports_credentials=True)
+# ✅ Habilita CORS con todos los métodos permitidos
+CORS(app, origins=["https://peppy-starlight-fd4c37.netlify.app"], 
+     supports_credentials=True,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization"])
+
 
 # --- CONFIGURACIÓN DE MONGO Y SECRET_KEY ---
 MONGO_URI = os.getenv("MONGO_URI")
