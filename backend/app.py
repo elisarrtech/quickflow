@@ -1,5 +1,3 @@
-### app.py
-
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
 from flask_cors import CORS
@@ -33,8 +31,9 @@ except Exception as e:
     print("❌ Error al conectar a MongoDB:", e)
 
 # Blueprints
-from backend.routes.auth import auth_bp
-from backend.routes.tasks import tasks_bp
+from routes.auth import auth_bp
+from routes.tasks import tasks_bp
+
 
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
