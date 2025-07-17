@@ -7,8 +7,6 @@ def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-
-        # 1. Obtener el token del encabezado Authorization
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split()[1]
@@ -17,13 +15,12 @@ def token_required(f):
             return jsonify({'error': 'Token no proporcionado'}), 401
 
         try:
-            # 2. Validar y decodificar el token
             secret = os.getenv("SECRET_KEY")
             if not secret:
                 return jsonify({'error': 'Clave secreta no configurada'}), 500
 
             data = jwt.decode(token, secret, algorithms=["HS256"])
-            request.user_email = data.get('email')  # Guardar email en request
+            request.user_email = data.get('email')
 
             if not request.user_email:
                 return jsonify({'error': 'Token sin email válido'}), 401
