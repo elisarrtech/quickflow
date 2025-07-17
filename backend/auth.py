@@ -1,29 +1,46 @@
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from datetime import datetime, timedelta
-from flask import current_app
 
-def hash_password(password):
-    return generate_password_hash(password)
+auth_bp = Blueprint("auth", __name__)
 
-def check_password(hashed_password, password):
-    return check_password_hash(hashed_password, password)
+def get_users_collection():
+    return current_app.mongo.db.users
 
-def generate_token(user_id, expires_in=3600):
-    payload = {
-        'user_id': user_id,
-        'exp': datetime.utcnow() + timedelta(seconds=expires_in),
-        'iat': datetime.utcnow()  # Fecha de emisión
-    }
-    return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
+@auth_bp.route("/register", methods=["POST"])
+def register():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
 
-def verify_token(token):
-    try:
-        payload = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-        return payload['user_id']
-    except jwt.ExpiredSignatureError:
-        print("Token expirado")
-        return None
-    except jwt.InvalidTokenError:
-        print("Token inválido")
-        return None
+    if not email or not password:
+        return jsonify({"error": "Correo y contraseña requeridos"}), 400
+
+    users = get_users_collection()
+    if users.find_one({"email": email}):
+        return jsonify({"error": "El correo ya está registrado"}), 400
+
+    hashed_password = generate_password_hash(password)
+    users.insert_one({"email": email, "password": hashed_password})
+
+    return jsonify({"message": "Registro exitoso"}), 201
+
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+
+    users = get_users_collection()
+    user = users.find_one({"email": email})
+
+    if not user or not check_password_hash(user["password"], password):
+        return jsonify({"error": "Credenciales inválidas"}), 401
+
+    token = jwt.encode({
+        "email": email,
+        "exp": datetime.utcnow() + timedelta(hours=2)
+    }, current_app.config["SECRET_KEY"], algorithm="HS256")
+
+    return jsonify({"token": token})
