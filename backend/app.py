@@ -14,7 +14,7 @@ if os.environ.get("RENDER") != "true":
 # --- CONFIGURACIÓN DE LA APLICACIÓN ---
 app = Flask(__name__)
 
-# ✅ CONFIGURACIÓN DE CORS CON ORIGEN NETLIFY PERMITIDO
+# ✅ CORS GLOBAL (Frontend Netlify)
 CORS(app, origins=["https://peppy-starlight-fd4c37.netlify.app"], supports_credentials=True)
 
 # --- CONFIGURACIÓN DE MONGO Y SECRET_KEY ---
@@ -40,6 +40,11 @@ app.mongo = mongo
 
 # --- IMPORTAR Y REGISTRAR BLUEPRINTS ---
 from backend.routes.tasks import tasks_bp
+from flask_cors import CORS as BlueprintCORS  # para usarlo en blueprints también
+
+# ✅ CORS SOBRE EL BLUEPRINT (muy importante para tareas)
+BlueprintCORS(tasks_bp, origins="https://peppy-starlight-fd4c37.netlify.app", supports_credentials=True)
+
 app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
 
 # --- RUTA DE PRUEBA ---
