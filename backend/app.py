@@ -35,7 +35,8 @@ from backend.routes.auth import auth_bp
 from backend.routes.tasks import tasks_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api")
-app.register_blueprint(tasks_bp, url_prefix="/api/tasks")
+app.register_blueprint(tasks_bp, url_prefix="/api")
+
 
 # --- Ruta de prueba ---
 @app.route("/")
