@@ -1,32 +1,25 @@
 from flask import Blueprint, request, jsonify, current_app
 from bson.objectid import ObjectId
 from datetime import datetime
-from werkzeug.utils import secure_filename
-import os
 from backend.auth_utils import token_required
+import os
 
 tasks_bp = Blueprint("tasks", __name__)
 
 def get_db():
     return current_app.mongo.db.tareas
 
-UPLOAD_FOLDER = "uploads"
-ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
-
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# ✅ Crear tarea con archivo adjunto opcional
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
 def crear_tarea():
-    data = request.form
+    data = request.form  # usamos form porque puede venir con archivo
     titulo = data.get("titulo")
     descripcion = data.get("descripcion", "")
     estado = data.get("estado", "pendiente")
     fecha = data.get("fecha", datetime.utcnow().strftime("%Y-%m-%d"))
     hora = data.get("hora", "")
     categoria = data.get("categoria", "")
+    nota = data.get("nota", "")
     subtareas = data.get("subtareas", "[]")
 
     if not titulo:
@@ -38,17 +31,6 @@ def crear_tarea():
     except ValueError:
         return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
 
-    archivo_url = ""
-    if "archivo" in request.files:
-        archivo = request.files["archivo"]
-        if archivo and allowed_file(archivo.filename):
-            filename = secure_filename(archivo.filename)
-            if not os.path.exists(UPLOAD_FOLDER):
-                os.makedirs(UPLOAD_FOLDER)
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
-            archivo.save(filepath)
-            archivo_url = f"{UPLOAD_FOLDER}/{filename}"
-
     tarea = {
         "titulo": titulo,
         "descripcion": descripcion,
@@ -56,10 +38,20 @@ def crear_tarea():
         "fecha": fecha,
         "hora": hora,
         "categoria": categoria,
+        "nota": nota,
         "subtareas": eval(subtareas),
-        "archivo": archivo_url,
         "usuario": request.user_email
     }
+
+    # archivo adjunto
+    if 'archivo' in request.files:
+        archivo = request.files['archivo']
+        if archivo.filename:
+            nombre_archivo = archivo.filename
+            uploads_dir = os.path.join(os.getcwd(), 'uploads')
+            os.makedirs(uploads_dir, exist_ok=True)
+            archivo.save(os.path.join(uploads_dir, nombre_archivo))
+            tarea["archivo"] = f"uploads/{nombre_archivo}"
 
     db = get_db()
     result = db.insert_one(tarea)
@@ -67,17 +59,6 @@ def crear_tarea():
 
     return jsonify(tarea), 201
 
-# ✅ Obtener tareas
-@tasks_bp.route("/tasks", methods=["GET"])
-@token_required
-def obtener_tareas():
-    db = get_db()
-    tareas = list(db.find({"usuario": request.user_email}))
-    for tarea in tareas:
-        tarea["_id"] = str(tarea["_id"])
-    return jsonify(tareas)
-
-# ✅ Actualizar tarea
 @tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
 def actualizar_tarea(id):
@@ -104,7 +85,15 @@ def actualizar_tarea(id):
 
     return jsonify({"message": "Tarea actualizada"}), 200
 
-# ✅ Eliminar tarea
+@tasks_bp.route("/tasks", methods=["GET"])
+@token_required
+def obtener_tareas():
+    db = get_db()
+    tareas = list(db.find({"usuario": request.user_email}))
+    for tarea in tareas:
+        tarea["_id"] = str(tarea["_id"])
+    return jsonify(tareas)
+
 @tasks_bp.route("/tasks/<id>", methods=["DELETE"])
 @token_required
 def eliminar_tarea(id):
