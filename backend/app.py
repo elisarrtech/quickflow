@@ -5,6 +5,13 @@ from datetime import datetime, timedelta
 import os
 import jwt
 
+
+CORS(app,
+     origins=["https://peppy-starlight-fd4c37.netlify.app"],
+     supports_credentials=True,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization"])
+
 # --- Cargar variables de entorno si no estamos en Render ---
 if os.environ.get("RENDER") != "true":
     from dotenv import load_dotenv
@@ -13,8 +20,6 @@ if os.environ.get("RENDER") != "true":
 # --- Inicializar la app ---
 app = Flask(__name__)
 
-# --- Configuración CORS para permitir llamadas desde Netlify ---
-CORS(app, origins=["https://peppy-starlight-fd4c37.netlify.app"], supports_credentials=True)
 
 # --- Configurar MongoDB y Secret Key ---
 app.config["MONGO_URI"] = os.getenv("MONGO_URI")
