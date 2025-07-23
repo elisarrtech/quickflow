@@ -8,7 +8,7 @@ tasks_bp = Blueprint("tasks", __name__)
 def get_db():
     return current_app.mongo.db.tareas
 
-# ✅ Crear tarea (actualizado con 'categoria' y 'subtareas')
+# ✅ Crear tarea (con 'categoria', 'subtareas' y ahora 'hora')
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
 def crear_tarea():
@@ -17,6 +17,7 @@ def crear_tarea():
     descripcion = data.get("descripcion", "")
     estado = data.get("estado", "pendiente")
     fecha = data.get("fecha", datetime.utcnow().strftime("%Y-%m-%d"))
+    hora = data.get("hora", "")  # ⏰ nuevo campo
     categoria = data.get("categoria", "")
     subtareas = data.get("subtareas", [])
 
@@ -34,6 +35,7 @@ def crear_tarea():
         "descripcion": descripcion,
         "estado": estado,
         "fecha": fecha,
+        "hora": hora,
         "categoria": categoria,
         "subtareas": subtareas,
         "usuario": request.user_email
@@ -55,7 +57,7 @@ def obtener_tareas():
         tarea["_id"] = str(tarea["_id"])
     return jsonify(tareas)
 
-# ✅ Actualizar tarea (soporte para categoria y subtareas)
+# ✅ Actualizar tarea (acepta también hora)
 @tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
 def actualizar_tarea(id):
