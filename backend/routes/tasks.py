@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app
 from bson.objectid import ObjectId
 from datetime import datetime
+from werkzeug.utils import secure_filename
+import os
 from backend.auth_utils import token_required
 
 tasks_bp = Blueprint("tasks", __name__)
@@ -8,18 +10,24 @@ tasks_bp = Blueprint("tasks", __name__)
 def get_db():
     return current_app.mongo.db.tareas
 
-# ✅ Crear tarea (con 'categoria', 'subtareas' y ahora 'hora')
+UPLOAD_FOLDER = "uploads"
+ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ✅ Crear tarea con archivo adjunto opcional
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
 def crear_tarea():
-    data = request.get_json()
+    data = request.form
     titulo = data.get("titulo")
     descripcion = data.get("descripcion", "")
     estado = data.get("estado", "pendiente")
     fecha = data.get("fecha", datetime.utcnow().strftime("%Y-%m-%d"))
-    hora = data.get("hora", "")  # ⏰ nuevo campo
+    hora = data.get("hora", "")
     categoria = data.get("categoria", "")
-    subtareas = data.get("subtareas", [])
+    subtareas = data.get("subtareas", "[]")
 
     if not titulo:
         return jsonify({"error": "El título es obligatorio."}), 400
@@ -30,6 +38,17 @@ def crear_tarea():
     except ValueError:
         return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
 
+    archivo_url = ""
+    if "archivo" in request.files:
+        archivo = request.files["archivo"]
+        if archivo and allowed_file(archivo.filename):
+            filename = secure_filename(archivo.filename)
+            if not os.path.exists(UPLOAD_FOLDER):
+                os.makedirs(UPLOAD_FOLDER)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            archivo.save(filepath)
+            archivo_url = f"{UPLOAD_FOLDER}/{filename}"
+
     tarea = {
         "titulo": titulo,
         "descripcion": descripcion,
@@ -37,7 +56,8 @@ def crear_tarea():
         "fecha": fecha,
         "hora": hora,
         "categoria": categoria,
-        "subtareas": subtareas,
+        "subtareas": eval(subtareas),
+        "archivo": archivo_url,
         "usuario": request.user_email
     }
 
@@ -47,7 +67,7 @@ def crear_tarea():
 
     return jsonify(tarea), 201
 
-# ✅ Obtener tareas del usuario autenticado
+# ✅ Obtener tareas
 @tasks_bp.route("/tasks", methods=["GET"])
 @token_required
 def obtener_tareas():
@@ -57,7 +77,7 @@ def obtener_tareas():
         tarea["_id"] = str(tarea["_id"])
     return jsonify(tareas)
 
-# ✅ Actualizar tarea (acepta también hora)
+# ✅ Actualizar tarea
 @tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
 def actualizar_tarea(id):
