@@ -9,16 +9,31 @@ def get_db():
     return current_app.mongo.db.tareas
 
 # ✅ Crear tarea (solo si el token es válido)
-@tasks_bp.route("/tasks", methods=["POST"])  # ⬅️ ajustado
+@tasks_bp.route("/tasks", methods=["POST"])
 @token_required
 def crear_tarea():
     data = request.get_json()
+    titulo = data.get("titulo")
+    descripcion = data.get("descripcion", "")
+    estado = data.get("estado", "pendiente")
+    fecha = data.get("fecha", datetime.utcnow().strftime("%Y-%m-%d"))
+
+    # Validaciones
+    if not titulo:
+        return jsonify({"error": "El título es obligatorio."}), 400
+    if estado not in ["pendiente", "completada"]:
+        return jsonify({"error": "Estado no válido."}), 400
+    try:
+        datetime.strptime(fecha, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
+
     tarea = {
-        "titulo": data.get("titulo"),
-        "descripcion": data.get("descripcion"),
-        "estado": data.get("estado", "pendiente"),
-        "fecha": data.get("fecha", datetime.utcnow().strftime("%Y-%m-%d")),
-        "usuario": request.user_email  # viene del token
+        "titulo": titulo,
+        "descripcion": descripcion,
+        "estado": estado,
+        "fecha": fecha,
+        "usuario": request.user_email
     }
 
     db = get_db()
@@ -26,6 +41,7 @@ def crear_tarea():
     tarea["_id"] = str(result.inserted_id)
 
     return jsonify(tarea), 201
+
 
 # ✅ Obtener tareas del usuario autenticado
 @tasks_bp.route("/tasks", methods=["GET"])  # ⬅️ ajustado
