@@ -3,16 +3,18 @@ from bson.objectid import ObjectId
 from datetime import datetime
 from backend.auth_utils import token_required
 import os
+import json
 
 tasks_bp = Blueprint("tasks", __name__)
 
 def get_db():
     return current_app.mongo.db.tareas
 
+# ✅ Crear tarea con adjunto, nota y subtareas seguras
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
 def crear_tarea():
-    data = request.form  # usamos form porque puede venir con archivo
+    data = request.form  # viene como FormData
     titulo = data.get("titulo")
     descripcion = data.get("descripcion", "")
     estado = data.get("estado", "pendiente")
@@ -20,7 +22,7 @@ def crear_tarea():
     hora = data.get("hora", "")
     categoria = data.get("categoria", "")
     nota = data.get("nota", "")
-    subtareas = data.get("subtareas", "[]")
+    subtareas_raw = data.get("subtareas", "[]")
 
     if not titulo:
         return jsonify({"error": "El título es obligatorio."}), 400
@@ -31,6 +33,11 @@ def crear_tarea():
     except ValueError:
         return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
 
+    try:
+        subtareas = json.loads(subtareas_raw)
+    except Exception:
+        subtareas = []
+
     tarea = {
         "titulo": titulo,
         "descripcion": descripcion,
@@ -39,18 +46,19 @@ def crear_tarea():
         "hora": hora,
         "categoria": categoria,
         "nota": nota,
-        "subtareas": eval(subtareas),
+        "subtareas": subtareas,
         "usuario": request.user_email
     }
 
-    # archivo adjunto
+    # Manejo de archivo adjunto
     if 'archivo' in request.files:
         archivo = request.files['archivo']
         if archivo.filename:
             nombre_archivo = archivo.filename
             uploads_dir = os.path.join(os.getcwd(), 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
-            archivo.save(os.path.join(uploads_dir, nombre_archivo))
+            archivo_path = os.path.join(uploads_dir, nombre_archivo)
+            archivo.save(archivo_path)
             tarea["archivo"] = f"uploads/{nombre_archivo}"
 
     db = get_db()
@@ -59,6 +67,7 @@ def crear_tarea():
 
     return jsonify(tarea), 201
 
+# ✅ Actualizar tarea (incluye 'nota')
 @tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
 def actualizar_tarea(id):
@@ -85,6 +94,7 @@ def actualizar_tarea(id):
 
     return jsonify({"message": "Tarea actualizada"}), 200
 
+# ✅ Obtener tareas
 @tasks_bp.route("/tasks", methods=["GET"])
 @token_required
 def obtener_tareas():
@@ -94,6 +104,7 @@ def obtener_tareas():
         tarea["_id"] = str(tarea["_id"])
     return jsonify(tareas)
 
+# ✅ Eliminar tarea
 @tasks_bp.route("/tasks/<id>", methods=["DELETE"])
 @token_required
 def eliminar_tarea(id):
