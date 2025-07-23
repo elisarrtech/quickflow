@@ -8,7 +8,7 @@ tasks_bp = Blueprint("tasks", __name__)
 def get_db():
     return current_app.mongo.db.tareas
 
-# ✅ Crear tarea (solo si el token es válido)
+# ✅ Crear tarea (con validaciones)
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
 def crear_tarea():
@@ -42,9 +42,8 @@ def crear_tarea():
 
     return jsonify(tarea), 201
 
-
 # ✅ Obtener tareas del usuario autenticado
-@tasks_bp.route("/tasks", methods=["GET"])  # ⬅️ ajustado
+@tasks_bp.route("/tasks", methods=["GET"])
 @token_required
 def obtener_tareas():
     db = get_db()
@@ -55,12 +54,23 @@ def obtener_tareas():
 
     return jsonify(tareas)
 
-# ✅ Actualizar tarea (solo si pertenece al usuario)
-@tasks_bp.route("/tasks/<id>", methods=["PUT"])  # ⬅️ ajustado
+# ✅ Actualizar tarea (con validaciones)
+@tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
 def actualizar_tarea(id):
     data = request.get_json()
     db = get_db()
+
+    # Validaciones (solo si los campos existen)
+    if "titulo" in data and not data["titulo"]:
+        return jsonify({"error": "El título no puede estar vacío."}), 400
+    if "estado" in data and data["estado"] not in ["pendiente", "completada"]:
+        return jsonify({"error": "Estado no válido."}), 400
+    if "fecha" in data:
+        try:
+            datetime.strptime(data["fecha"], "%Y-%m-%d")
+        except ValueError:
+            return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
 
     result = db.update_one(
         {"_id": ObjectId(id), "usuario": request.user_email},
@@ -72,8 +82,8 @@ def actualizar_tarea(id):
 
     return jsonify({"message": "Tarea actualizada"}), 200
 
-# ✅ Eliminar tarea (solo si pertenece al usuario)
-@tasks_bp.route("/tasks/<id>", methods=["DELETE"])  # ⬅️ ajustado
+# ✅ Eliminar tarea
+@tasks_bp.route("/tasks/<id>", methods=["DELETE"])
 @token_required
 def eliminar_tarea(id):
     db = get_db()
