@@ -42,6 +42,13 @@ from backend.routes.tasks import tasks_bp
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(tasks_bp, url_prefix="/api")  # <== ✅ corregido aquí
 
+# ✅ Ruta para servir archivos adjuntos
+from flask import send_from_directory
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory('uploads', filename)
+
 # --- Ruta de prueba ---
 @app.route("/")
 def home():
