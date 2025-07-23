@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_pymongo import PyMongo
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -13,7 +13,12 @@ if os.environ.get("RENDER") != "true":
 # --- Inicializar la app ---
 app = Flask(__name__)
 
-# --- Configuración CORS (después de inicializar Flask)
+# ✅ Ruta para servir archivos subidos (PDF, imágenes, etc.)
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    return send_from_directory(os.path.join(os.getcwd(), 'uploads'), filename)
+
+# --- Configuración CORS (después de inicializar Flask) ---
 CORS(app,
      origins=["https://peppy-starlight-fd4c37.netlify.app"],
      supports_credentials=True,
@@ -27,7 +32,6 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "clave_supersecreta")
 mongo = PyMongo(app)
 app.mongo = mongo  # Hacer accesible globalmente
 
-
 # --- Verificar conexión a MongoDB ---
 try:
     mongo.cx.server_info()
@@ -40,14 +44,7 @@ from backend.routes.auth import auth_bp
 from backend.routes.tasks import tasks_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api")
-app.register_blueprint(tasks_bp, url_prefix="/api")  # <== ✅ corregido aquí
-
-# ✅ Ruta para servir archivos adjuntos
-from flask import send_from_directory
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory('uploads', filename)
+app.register_blueprint(tasks_bp, url_prefix="/api")
 
 # --- Ruta de prueba ---
 @app.route("/")
