@@ -8,7 +8,7 @@ tasks_bp = Blueprint("tasks", __name__)
 def get_db():
     return current_app.mongo.db.tareas
 
-# ✅ Crear tarea (con validaciones)
+# ✅ Crear tarea (con validaciones + categoría)
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
 def crear_tarea():
@@ -17,6 +17,7 @@ def crear_tarea():
     descripcion = data.get("descripcion", "")
     estado = data.get("estado", "pendiente")
     fecha = data.get("fecha", datetime.utcnow().strftime("%Y-%m-%d"))
+    categoria = data.get("categoria", "")  # <-- nuevo campo opcional
 
     # Validaciones
     if not titulo:
@@ -33,6 +34,7 @@ def crear_tarea():
         "descripcion": descripcion,
         "estado": estado,
         "fecha": fecha,
+        "categoria": categoria,  # <-- guardar categoría
         "usuario": request.user_email
     }
 
@@ -54,7 +56,7 @@ def obtener_tareas():
 
     return jsonify(tareas)
 
-# ✅ Actualizar tarea (con validaciones)
+# ✅ Actualizar tarea (con validaciones + soporte para categoría)
 @tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
 def actualizar_tarea(id):
