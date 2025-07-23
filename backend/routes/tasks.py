@@ -9,7 +9,7 @@ def get_db():
     return current_app.mongo.db.tareas
 
 # ✅ Crear tarea (solo si el token es válido)
-@tasks_bp.route("/", methods=["POST"])
+@tasks_bp.route("/tasks", methods=["POST"])  # ⬅️ ajustado
 @token_required
 def crear_tarea():
     data = request.get_json()
@@ -28,7 +28,7 @@ def crear_tarea():
     return jsonify(tarea), 201
 
 # ✅ Obtener tareas del usuario autenticado
-@tasks_bp.route("/", methods=["GET"])
+@tasks_bp.route("/tasks", methods=["GET"])  # ⬅️ ajustado
 @token_required
 def obtener_tareas():
     db = get_db()
@@ -40,7 +40,7 @@ def obtener_tareas():
     return jsonify(tareas)
 
 # ✅ Actualizar tarea (solo si pertenece al usuario)
-@tasks_bp.route("/<id>", methods=["PUT"])
+@tasks_bp.route("/tasks/<id>", methods=["PUT"])  # ⬅️ ajustado
 @token_required
 def actualizar_tarea(id):
     data = request.get_json()
@@ -57,7 +57,7 @@ def actualizar_tarea(id):
     return jsonify({"message": "Tarea actualizada"}), 200
 
 # ✅ Eliminar tarea (solo si pertenece al usuario)
-@tasks_bp.route("/<id>", methods=["DELETE"])
+@tasks_bp.route("/tasks/<id>", methods=["DELETE"])  # ⬅️ ajustado
 @token_required
 def eliminar_tarea(id):
     db = get_db()
