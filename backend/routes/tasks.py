@@ -112,8 +112,4 @@ def eliminar_tarea(id):
         return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
     return jsonify({"message": "Tarea eliminada"}), 200
 
-# ✅ Ruta para servir archivos subidos desde /uploads/*
-@current_app.route('/uploads/<path:filename>')
-def serve_upload(filename):
-    uploads_dir = os.path.join(os.getcwd(), 'uploads')
-    return send_from_directory(uploads_dir, filename)
+
