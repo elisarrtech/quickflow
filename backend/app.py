@@ -42,11 +42,11 @@ except Exception as e:
 # --- Importar y registrar Blueprints ---
 from backend.routes.auth import auth_bp
 from backend.routes.tasks import tasks_bp
-from backend.routes.perfil import perfil_bp  # asegúrate de que esté en routes/perfil.py
+from backend.routes.perfil import perfil_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(tasks_bp, url_prefix="/api")
-app.register_blueprint(perfil_bp, url_prefix="/api")  # ✅ Aquí correctamente
+app.register_blueprint(perfil_bp, url_prefix="/api")  # ✅ SOLO esta línea
 
 # --- Ruta de prueba ---
 @app.route("/")
