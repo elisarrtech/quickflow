@@ -4,6 +4,8 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 import os
 import jwt
+from routes.perfil import perfil_bp
+app.register_blueprint(perfil_bp)
 
 # --- Cargar variables de entorno si no estamos en Render ---
 if os.environ.get("RENDER") != "true":
