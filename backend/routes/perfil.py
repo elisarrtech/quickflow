@@ -7,7 +7,7 @@ perfil_bp = Blueprint('perfil', __name__)
 @token_required
 def perfil(current_user_email):
     db = current_app.mongo.db
-    users_collection = db.misselisavirtual
+    users_collection = db.users
 
 
     if request.method == 'GET':
