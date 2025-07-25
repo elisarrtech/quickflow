@@ -3,7 +3,7 @@ from backend.auth_utils import token_required
 
 perfil_bp = Blueprint('perfil', __name__)
 
-@perfil_bp.route('/api/perfil', methods=['GET', 'PUT'])
+@perfil_bp.route('/perfil', methods=['GET', 'PUT'])
 @token_required
 def perfil(current_user_email):
     db = current_app.mongo.db
