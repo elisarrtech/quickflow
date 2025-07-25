@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from bson.objectid import ObjectId
 from datetime import datetime
 from backend.auth_utils import token_required
@@ -52,12 +52,17 @@ def crear_tarea():
             nombre_archivo = archivo.filename
             uploads_dir = os.path.join(os.getcwd(), 'uploads')
             os.makedirs(uploads_dir, exist_ok=True)
-            archivo.save(os.path.join(uploads_dir, nombre_archivo))
+            archivo_path = os.path.join(uploads_dir, nombre_archivo)
+            archivo.save(archivo_path)
             tarea["archivo"] = f"uploads/{nombre_archivo}"
 
     db = get_db()
     result = db.insert_one(tarea)
     tarea["_id"] = str(result.inserted_id)
+
+    # ✅ incluir archivoUrl en la respuesta si aplica
+    if "archivo" in tarea:
+        tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{tarea['archivo']}"
 
     return jsonify(tarea), 201
 
@@ -94,6 +99,8 @@ def obtener_tareas():
     tareas = list(db.find({"usuario": request.user_email}))
     for tarea in tareas:
         tarea["_id"] = str(tarea["_id"])
+        if "archivo" in tarea:
+            tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{tarea['archivo']}"
     return jsonify(tareas)
 
 @tasks_bp.route("/tasks/<id>", methods=["DELETE"])
@@ -104,3 +111,9 @@ def eliminar_tarea(id):
     if result.deleted_count == 0:
         return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
     return jsonify({"message": "Tarea eliminada"}), 200
+
+# ✅ Ruta para servir archivos subidos desde /uploads/*
+@current_app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    uploads_dir = os.path.join(os.getcwd(), 'uploads')
+    return send_from_directory(uploads_dir, filename)
