@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app, send_from_directory
+from flask import Blueprint, request, jsonify, current_app
 from bson.objectid import ObjectId
 from datetime import datetime
 from backend.auth_utils import token_required
@@ -11,7 +11,7 @@ def get_db():
 
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
-def crear_tarea():
+def crear_tarea(usuario_email):
     data = request.form
     titulo = data.get("titulo")
     descripcion = data.get("descripcion", "")
@@ -42,10 +42,9 @@ def crear_tarea():
         "nota": nota,
         "enlace": enlace,
         "subtareas": eval(subtareas),
-        "usuario": request.user_email
+        "usuario": usuario_email
     }
 
-    # archivo adjunto
     if 'archivo' in request.files:
         archivo = request.files['archivo']
         if archivo.filename:
@@ -60,7 +59,6 @@ def crear_tarea():
     result = db.insert_one(tarea)
     tarea["_id"] = str(result.inserted_id)
 
-    # ✅ incluir archivoUrl en la respuesta si aplica
     if "archivo" in tarea:
         tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{tarea['archivo']}"
 
@@ -68,7 +66,7 @@ def crear_tarea():
 
 @tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
-def actualizar_tarea(id):
+def actualizar_tarea(usuario_email, id):
     data = request.get_json()
     db = get_db()
 
@@ -83,7 +81,7 @@ def actualizar_tarea(id):
             return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
 
     result = db.update_one(
-        {"_id": ObjectId(id), "usuario": request.user_email},
+        {"_id": ObjectId(id), "usuario": usuario_email},
         {"$set": data}
     )
 
@@ -94,22 +92,21 @@ def actualizar_tarea(id):
 
 @tasks_bp.route("/tasks", methods=["GET"])
 @token_required
-def obtener_tareas():
+def obtener_tareas(usuario_email):
     db = get_db()
-    tareas = list(db.find({"usuario": request.user_email}))
+    tareas = list(db.find({"usuario": usuario_email}))
     for tarea in tareas:
         tarea["_id"] = str(tarea["_id"])
-        if "archivo" in tarea:
-            tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{tarea['archivo']}"
+        archivo = tarea.get("archivo")
+        if isinstance(archivo, str) and archivo.strip():
+            tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{archivo}"
     return jsonify(tareas)
 
 @tasks_bp.route("/tasks/<id>", methods=["DELETE"])
 @token_required
-def eliminar_tarea(id):
+def eliminar_tarea(usuario_email, id):
     db = get_db()
-    result = db.delete_one({"_id": ObjectId(id), "usuario": request.user_email})
+    result = db.delete_one({"_id": ObjectId(id), "usuario": usuario_email})
     if result.deleted_count == 0:
         return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
     return jsonify({"message": "Tarea eliminada"}), 200
-
-
