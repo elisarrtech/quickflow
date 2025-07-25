@@ -6,8 +6,8 @@ perfil_bp = Blueprint('perfil', __name__)
 @perfil_bp.route('/api/perfil', methods=['GET', 'PUT'])
 @token_required
 def perfil(current_user_email):
-    db = current_app.mongo.db  # ✅ esta es la forma correcta
-    users_collection = db.users  # o quickflowbase.users si así lo tienes
+    db = current_app.mongo.db
+    users_collection = db.users  # o db["quickflowbase"]["users"] si así se llama tu colección
 
     if request.method == 'GET':
         user = users_collection.find_one({"email": current_user_email})
