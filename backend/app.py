@@ -43,7 +43,9 @@ except Exception as e:
 from backend.routes.auth import auth_bp
 from backend.routes.tasks import tasks_bp
 from backend.routes.perfil import perfil_bp
+from backend.eventos_routes import eventos_bp
 
+app.register_blueprint(eventos_bp)
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(tasks_bp, url_prefix="/api")
 app.register_blueprint(perfil_bp, url_prefix="/api")  # ✅ SOLO esta línea
