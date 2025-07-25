@@ -1,6 +1,6 @@
 # routes/perfil.py
 from flask import Blueprint, request, jsonify
-from auth_utils import token_required
+from backend.auth_utils import token_required
 from models import users_collection
 
 perfil_bp = Blueprint('perfil', __name__)
