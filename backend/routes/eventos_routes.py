@@ -4,8 +4,8 @@ from flask import Blueprint, request, jsonify
 from flask_pymongo import ObjectId
 from backend.jwt_utils import verify_token
 from backend.auth_utils import token_required
+from backend.app import mongo  # ✅ Aquí es donde estaba el error
 from datetime import datetime
-from app import mongo
 
 eventos_bp = Blueprint('eventos', __name__)
 
