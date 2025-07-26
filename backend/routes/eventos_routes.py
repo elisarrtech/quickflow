@@ -2,8 +2,8 @@
 # backend/eventos_routes.py
 from flask import Blueprint, request, jsonify
 from flask_pymongo import ObjectId
-from jwt_utils import verify_token
-from auth_utils import token_required
+from backend.jwt_utils import verify_token
+from backend.auth_utils import token_required
 from datetime import datetime
 from app import mongo
 
