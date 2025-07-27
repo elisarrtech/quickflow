@@ -25,6 +25,7 @@ def crear_tarea(usuario_email):
     categoria = data.get("categoria", "")
     nota = data.get("nota", "")
     enlace = data.get("enlace", "")
+    asignado = data.get("asignado", "")
     subtareas_raw = data.get("subtareas", "[]")
 
     try:
@@ -50,6 +51,7 @@ def crear_tarea(usuario_email):
         "categoria": categoria,
         "nota": nota,
         "enlace": enlace,
+        "asignado": asignado,
         "subtareas": subtareas,
         "usuario": usuario_email
     }
@@ -72,6 +74,7 @@ def crear_tarea(usuario_email):
         tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{tarea['archivo']}"
 
     return jsonify(tarea), 201
+
 
 @tasks_bp.route("/tasks/<id>", methods=["PUT"])
 @token_required
