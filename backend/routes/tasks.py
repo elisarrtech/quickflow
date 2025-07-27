@@ -2,7 +2,10 @@ from flask import Blueprint, request, jsonify, current_app
 from bson.objectid import ObjectId
 from datetime import datetime
 from backend.auth_utils import token_required
+from flask_cors import cross_origin
 import os
+import json
+
 
 tasks_bp = Blueprint("tasks", __name__)
 
@@ -11,6 +14,7 @@ def get_db():
 
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
+@cross_origin(origins=["https://peppy-starlight-fd4c37.netlify.app"], supports_credentials=True)
 def crear_tarea(usuario_email):
     data = request.form
     titulo = data.get("titulo")
@@ -21,7 +25,12 @@ def crear_tarea(usuario_email):
     categoria = data.get("categoria", "")
     nota = data.get("nota", "")
     enlace = data.get("enlace", "")
-    subtareas = data.get("subtareas", "[]")
+    subtareas_raw = data.get("subtareas", "[]")
+
+    try:
+        subtareas = json.loads(subtareas_raw)
+    except json.JSONDecodeError:
+        subtareas = []
 
     if not titulo:
         return jsonify({"error": "El título es obligatorio."}), 400
@@ -41,7 +50,7 @@ def crear_tarea(usuario_email):
         "categoria": categoria,
         "nota": nota,
         "enlace": enlace,
-        "subtareas": eval(subtareas),
+        "subtareas": subtareas,
         "usuario": usuario_email
     }
 
