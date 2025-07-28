@@ -10,7 +10,7 @@ import json
 tasks_bp = Blueprint("tasks", __name__)
 
 def get_db():
-    return current_app.mongo.db.tasks
+    return current_app.mongo.db.tareas
 
 @tasks_bp.route("/tasks", methods=["POST"])
 @token_required
