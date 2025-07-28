@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 from flask_pymongo import PyMongo
 import os
@@ -26,6 +26,24 @@ try:
     print("✅ Conectado a MongoDB Atlas")
 except Exception as e:
     print("❌ Error al conectar a MongoDB:", e)
+
+# --- Logging para debugging ---
+@app.before_request
+def log_request_info():
+    print(f"👉 Método: {request.method} | Ruta: {request.path}")
+    print(f"👉 Headers: {dict(request.headers)}")
+
+# --- Respuesta global a OPTIONS ---
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "https://peppy-starlight-fd4c37.netlify.app")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+    return response
+
+@app.route('/api/<path:path>', methods=['OPTIONS'])
+def options_handler(path):
+    return '', 204
 
 # --- Ruta para servir archivos subidos (PDFs, imágenes, etc.) ---
 @app.route('/uploads/<path:filename>')
