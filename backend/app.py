@@ -1,16 +1,16 @@
-from flask import Flask, request, jsonify, send_from_directory
-from flask_pymongo import PyMongo
+from flask import Flask
 from flask_cors import CORS
-from datetime import datetime, timedelta
-from backend.routes.alerts_routes import alertas_bp
 import os
-import jwt
 
+app = Flask(__name__)  # ✅ Primero creamos la instancia de Flask
+
+# ✅ Luego configuramos CORS
 CORS(app,
      origins=["https://peppy-starlight-fd4c37.netlify.app"],
      supports_credentials=True,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"])
+
 
 # --- Cargar variables de entorno si no estamos en Render ---
 if os.environ.get("RENDER") != "true":
