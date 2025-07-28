@@ -1,4 +1,4 @@
-from flask import Flask, request, send_from_directory
+from flask import Flask, request, send_from_directory, jsonify
 from flask_cors import CORS
 from flask_pymongo import PyMongo
 import os
@@ -6,10 +6,10 @@ import os
 # --- Inicializar Flask ---
 app = Flask(__name__)
 
-# --- Configuración CORS (sin espacios extra, y bien definido) ---
+# --- Configuración CORS (CORREGIDA) ---
 CORS(app,
-     origins=["https://peppy-starlight-fd4c37.netlify.app"],  # ✅ sin espacios
-     supports_credentials=True,
+     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ Sin corchetes ni espacios
+     supports_credentials=False,  # A menos que uses cookies
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"])
 
@@ -31,26 +31,8 @@ except Exception as e:
 @app.before_request
 def log_request_info():
     print(f"👉 Método: {request.method} | Ruta: {request.path}")
+    print(f"👉 Origin: {request.headers.get('Origin')}")
     print(f"👉 Headers: {dict(request.headers)}")
-
-# --- Elimina el after_request si usas flask-cors correctamente ---
-# No es necesario duplicar las cabeceras CORS si ya usas flask-cors
-# Comenta o elimina esta función:
-# @app.after_request
-# def after_request(response):
-#     response.headers.add("Access-Control-Allow-Origin", "https://peppy-starlight-fd4c37.netlify.app  ")
-#     response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-#     response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-#     return response
-
-# --- Manejador de OPTIONS si es necesario ---
-@app.route('/api/<path:path>', methods=['OPTIONS'])
-def options_handler(path):
-    response = app.make_response('')
-    response.headers["Access-Control-Allow-Origin"] = "https://peppy-starlight-fd4c37.netlify.app"
-    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
-    return response, 204
 
 # --- Ruta para servir archivos subidos ---
 @app.route('/uploads/<path:filename>')
@@ -62,19 +44,19 @@ from backend.routes.auth import auth_bp
 from backend.routes.tasks import tasks_bp
 from backend.routes.perfil import perfil_bp
 from backend.routes.eventos_routes import eventos_bp
-from backend.routes.alerts_routes import alerts_bp  # ✅ NUEVO
+from backend.routes.alerts_routes import alerts_bp
 
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(tasks_bp, url_prefix="/api")
 app.register_blueprint(perfil_bp, url_prefix="/api")
 app.register_blueprint(eventos_bp, url_prefix="/api")
-app.register_blueprint(alerts_bp, url_prefix="/api")  # ✅ NUEVO
+app.register_blueprint(alerts_bp, url_prefix="/api")
 
-# --- Ruta raíz de prueba ---
+# --- Ruta raíz ---
 @app.route("/")
 def home():
     return "API Quickflow funcionando ✅"
 
-# --- Ejecutar localmente ---
+# --- Ejecutar ---
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
