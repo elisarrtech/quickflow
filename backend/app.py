@@ -40,11 +40,11 @@ from backend.routes.auth import auth_bp
 from backend.routes.tasks import tasks_bp
 from backend.routes.perfil import perfil_bp
 from backend.routes.eventos_routes import eventos_bp
-from backend.routes.alerts import alertas_bp
+from backend.routes.alerts import alerts_bp
 
 # --- Registrar Blueprints ---
 app.register_blueprint(eventos_bp)
-app.register_blueprint(alertas_bp)
+app.register_blueprint(alerts_bp)
 app.register_blueprint(auth_bp, url_prefix="/api")
 app.register_blueprint(tasks_bp, url_prefix="/api")
 app.register_blueprint(perfil_bp, url_prefix="/api")
