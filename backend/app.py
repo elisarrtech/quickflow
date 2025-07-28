@@ -6,6 +6,12 @@ from backend.routes.alerts_routes import alertas_bp
 import os
 import jwt
 
+CORS(app,
+     origins=["https://peppy-starlight-fd4c37.netlify.app"],
+     supports_credentials=True,
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization"])
+
 # --- Cargar variables de entorno si no estamos en Render ---
 if os.environ.get("RENDER") != "true":
     from dotenv import load_dotenv
