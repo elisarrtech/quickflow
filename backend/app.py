@@ -6,9 +6,9 @@ import os
 # --- Inicializar Flask ---
 app = Flask(__name__)
 
-# --- Configuración CORS ---
+# --- Configuración CORS (sin espacios extra, y bien definido) ---
 CORS(app,
-     origins=["https://peppy-starlight-fd4c37.netlify.app"],
+     origins=["https://peppy-starlight-fd4c37.netlify.app"],  # ✅ sin espacios
      supports_credentials=True,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"])
@@ -33,17 +33,24 @@ def log_request_info():
     print(f"👉 Método: {request.method} | Ruta: {request.path}")
     print(f"👉 Headers: {dict(request.headers)}")
 
-# --- Respuesta global a OPTIONS ---
-@app.after_request
-def after_request(response):
-    response.headers.add("Access-Control-Allow-Origin", "https://peppy-starlight-fd4c37.netlify.app")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-    response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-    return response
+# --- Elimina el after_request si usas flask-cors correctamente ---
+# No es necesario duplicar las cabeceras CORS si ya usas flask-cors
+# Comenta o elimina esta función:
+# @app.after_request
+# def after_request(response):
+#     response.headers.add("Access-Control-Allow-Origin", "https://peppy-starlight-fd4c37.netlify.app  ")
+#     response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+#     response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+#     return response
 
+# --- Manejador de OPTIONS si es necesario ---
 @app.route('/api/<path:path>', methods=['OPTIONS'])
 def options_handler(path):
-    return '', 204
+    response = app.make_response('')
+    response.headers["Access-Control-Allow-Origin"] = "https://peppy-starlight-fd4c37.netlify.app"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE,OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization"
+    return response, 204
 
 # --- Ruta para servir archivos subidos ---
 @app.route('/uploads/<path:filename>')
