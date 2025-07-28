@@ -8,10 +8,11 @@ app = Flask(__name__)
 
 # --- Configuración CORS (CORREGIDA) ---
 CORS(app,
-     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ Sin corchetes ni espacios
-     supports_credentials=False,  # A menos que uses cookies
+     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ Sin espacios, sin lista
+     supports_credentials=False,  # ⚠️ Usa True solo si envías cookies
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization"])
+     allow_headers=["Content-Type", "Authorization"],
+     expose_headers=["Content-Type", "Authorization"])
 
 # --- Configuración MongoDB ---
 app.config["MONGO_URI"] = os.getenv("MONGO_URI")
