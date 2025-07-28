@@ -40,7 +40,7 @@ from backend.routes.auth import auth_bp
 from backend.routes.tasks import tasks_bp
 from backend.routes.perfil import perfil_bp
 from backend.routes.eventos_routes import eventos_bp
-from backend.routes.alerts import alerts_bp
+from backend.alerts import alerts_bp
 
 # --- Registrar Blueprints ---
 app.register_blueprint(eventos_bp)
