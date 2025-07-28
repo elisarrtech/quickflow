@@ -8,8 +8,8 @@ app = Flask(__name__)
 
 # --- Configuración CORS (CORREGIDA) ---
 CORS(app,
-     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ Sin espacios, sin lista
-     supports_credentials=False,  # ⚠️ Usa True solo si envías cookies
+     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ Sin espacios
+     supports_credentials=False,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"],
      expose_headers=["Content-Type", "Authorization"])
