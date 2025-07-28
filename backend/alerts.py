@@ -1,5 +1,13 @@
 import requests
 import os
+from flask import Blueprint
+
+alerts_bp = Blueprint("alerts", __name__)
+
+@alerts_bp.route('/api/alerta-prueba')
+def alerta_prueba():
+    return {"mensaje": "Alerta funcionando ✅"}
+
 
 def enviar_alerta_whatsapp_twilio():
     account_sid = os.getenv("TWILIO_SID")  # Tu Twilio SID real
