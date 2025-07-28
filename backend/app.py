@@ -11,15 +11,6 @@ CORS(app,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"])
 
-
-# --- Cargar variables de entorno si no estamos en Render ---
-if os.environ.get("RENDER") != "true":
-    from dotenv import load_dotenv
-    load_dotenv()
-
-# --- Inicializar la app ---
-app = Flask(__name__)
-
 # ✅ Registrar alertas después de crear app
 app.register_blueprint(alertas_bp)
 
