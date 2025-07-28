@@ -45,7 +45,7 @@ def after_request(response):
 def options_handler(path):
     return '', 204
 
-# --- Ruta para servir archivos subidos (PDFs, imágenes, etc.) ---
+# --- Ruta para servir archivos subidos ---
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
     return send_from_directory(os.path.join(os.getcwd(), 'uploads'), filename)
