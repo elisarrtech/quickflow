@@ -1,17 +1,9 @@
 import requests
 import os
-from flask import Blueprint
-
-alerts_bp = Blueprint("alerts", __name__)
-
-@alerts_bp.route('/api/alerta-prueba')
-def alerta_prueba():
-    return {"mensaje": "Alerta funcionando ✅"}
-
 
 def enviar_alerta_whatsapp_twilio():
-    account_sid = os.getenv("TWILIO_SID")  # Tu Twilio SID real
-    auth_token = os.getenv("TWILIO_AUTH")  # Tu Twilio token real
+    account_sid = os.getenv("TWILIO_SID")
+    auth_token = os.getenv("TWILIO_AUTH")
 
     url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
 
@@ -22,8 +14,8 @@ def enviar_alerta_whatsapp_twilio():
     )
 
     data = {
-        'To': 'whatsapp:+5214421092362',  # Tu número validado
-        'From': 'whatsapp:+14155238886',  # Número del sandbox Twilio
+        'To': 'whatsapp:+5214421092362',  # Número destino (validado)
+        'From': 'whatsapp:+14155238886',  # Número sandbox de Twilio
         'Body': mensaje
     }
 
