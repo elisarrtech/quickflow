@@ -1,29 +1,24 @@
 from functools import wraps
-from flask import request, jsonify, current_app
-import jwt
+from flask import request, jsonify
 
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = None
+        if request.method == 'OPTIONS':
+            return '', 204  # ✅ Permitir preflight sin token
 
-        # Leer el token del encabezado Authorization
+        token = None
         if 'Authorization' in request.headers:
-            auth_header = request.headers['Authorization']
-            if auth_header.startswith("Bearer "):
-                token = auth_header.split(" ")[1]
+            token = request.headers['Authorization'].split(" ")[1]
 
         if not token:
-            return jsonify({'error': 'Token faltante'}), 401
+            return jsonify({'msg': 'Token no proporcionado'}), 401
 
         try:
-            payload = jwt.decode(token, current_app.config["SECRET_KEY"], algorithms=["HS256"])
-            current_user_email = payload["email"]  # ✅ Aquí extraemos el email
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token expirado'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Token inválido'}), 401
+            from jwt_utils import verify_token
+            user_email = verify_token(token)
+        except:
+            return jsonify({'msg': 'Token inválido o expirado'}), 401
 
-        return f(current_user_email, *args, **kwargs)  # ✅ Pasamos el email a la función decorada
-
+        return f(user_email, *args, **kwargs)
     return decorated
