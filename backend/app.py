@@ -22,11 +22,11 @@ mongo = PyMongo(app)
 app.mongo = mongo
 
 # --- Importar y configurar Mail (antes de usarlo) ---
-from backend.routes.report import report_bp
+# from backend.routes.report import report_bp
 from backend.utils.mail_utils import init_mail
 
 init_mail(app)  # ✅ Inicializa Flask-Mail con la app
-app.register_blueprint(report_bp)  # ✅ Registra el blueprint de reportes
+# app.register_blueprint(report_bp)  # ✅ Registra el blueprint de reportes
 
 # --- Verificar conexión a MongoDB ---
 try:
