@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # --- Configuración CORS (CORREGIDA) ---
 CORS(app,
-     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ Sin espacios
+     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ CORREGIDO: sin espacios
      supports_credentials=False,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"],
@@ -20,6 +20,13 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "clave_supersecreta")
 
 mongo = PyMongo(app)
 app.mongo = mongo
+
+# --- Importar y configurar Mail (antes de usarlo) ---
+from backend.routes.report import report_bp
+from backend.utils.mail_utils import init_mail
+
+init_mail(app)  # ✅ Inicializa Flask-Mail con la app
+app.register_blueprint(report_bp)  # ✅ Registra el blueprint de reportes
 
 # --- Verificar conexión a MongoDB ---
 try:
