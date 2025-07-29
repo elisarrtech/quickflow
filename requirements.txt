@@ -9,7 +9,7 @@ PyJWT==2.8.0
 requests==2.31.0
 twilio==8.10.0
 flask-mail==0.9.1
-weasyprint==60.2
+# weasyprint==60.2 👈 COMENTADO POR INCOMPATIBILIDAD CON RAILWAY
 itsdangerous==2.1.2
 Jinja2==3.1.2
 MarkupSafe==2.1.1
