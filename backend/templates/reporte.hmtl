@@ -1,1 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    h1 { color: #2b6cb0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background-color: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>📊 Reporte de Actividad – {{ usuario }}</h1>
+  <p>Fecha de generación: {{ fecha }}</p>
+  <h3>Resumen:</h3>
+  <ul>
+    <li>✅ Completadas: {{ completadas }}</li>
+    <li>⏳ Pendientes: {{ pendientes }}</li>
+    <li>⚠️ Atrasadas: {{ atrasadas }}</li>
+    <li>📈 Cumplimiento: {{ cumplimiento }}%</li>
+  </ul>
+
+  <h3>Tareas por Categoría:</h3>
+  <table>
+    <tr><th>Categoría</th><th>Cantidad</th></tr>
+    {% for cat, val in categorias.items() %}
+    <tr><td>{{ cat }}</td><td>{{ val }}</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>
 
