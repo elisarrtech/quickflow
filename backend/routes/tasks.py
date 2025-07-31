@@ -1,3 +1,4 @@
+# backend/routes/tasks.py
 from flask import Blueprint, request, jsonify, current_app
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -5,7 +6,6 @@ from backend.auth_utils import token_required
 from flask_cors import cross_origin
 import os
 import json
-
 
 tasks_bp = Blueprint("tasks", __name__)
 
@@ -53,7 +53,10 @@ def crear_tarea(usuario_email):
         "enlace": enlace,
         "asignado": asignado,
         "subtareas": subtareas,
-        "usuario": usuario_email
+        "usuario": usuario_email,
+        "prioridad": data.get("prioridad", "media"),
+        "comentarios": [],
+        "historial": [{"accion": "Tarea creada", "fecha": datetime.utcnow().isoformat()}]
     }
 
     if 'archivo' in request.files:
@@ -82,25 +85,62 @@ def actualizar_tarea(usuario_email, id):
     data = request.get_json()
     db = get_db()
 
-    if "titulo" in data and not data["titulo"]:
+    if not data:
+        return jsonify({"error": "No se enviaron datos."}), 400
+
+    if "titulo" in data and not data["titulo"].strip():
         return jsonify({"error": "El título no puede estar vacío."}), 400
+
     if "estado" in data and data["estado"] not in ["pendiente", "completada"]:
         return jsonify({"error": "Estado no válido."}), 400
+
     if "fecha" in data:
         try:
             datetime.strptime(data["fecha"], "%Y-%m-%d")
         except ValueError:
             return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
 
+    if "prioridad" in data and data["prioridad"] not in ["alta", "media", "baja"]:
+        return jsonify({"error": "Prioridad no válida."}), 400
+
+    tarea = db.find_one({"_id": ObjectId(id), "usuario": usuario_email})
+    if not tarea:
+        return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
+
+    update_data = {"$set": data}
+
+    if "subtareas" in data:
+        subtareas_nuevas = data["subtareas"]
+        subtareas_viejas = tarea.get("subtareas", [])
+        for sub in subtareas_nuevas:
+            if isinstance(sub, dict) and sub.get("completada") and not any(s.get("texto") == sub["texto"] and s.get("completada") for s in subtareas_viejas):
+                update_data.setdefault("$push", {})["historial"] = {
+                    "accion": f"Subtarea '{sub['texto']}' completada",
+                    "fecha": datetime.utcnow().isoformat()
+                }
+
+    if "estado" in data and data["estado"] != tarea["estado"]:
+        update_data.setdefault("$push", {})["historial"] = {
+            "accion": f"Tarea marcada como {data['estado']}",
+            "fecha": datetime.utcnow().isoformat()
+        }
+
+    if "prioridad" in data and data["prioridad"] != tarea.get("prioridad", "media"):
+        update_data.setdefault("$push", {})["historial"] = {
+            "accion": f"Prioridad cambiada a {data['prioridad']}",
+            "fecha": datetime.utcnow().isoformat()
+        }
+
     result = db.update_one(
         {"_id": ObjectId(id), "usuario": usuario_email},
-        {"$set": data}
+        update_data
     )
 
     if result.matched_count == 0:
         return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
 
     return jsonify({"message": "Tarea actualizada"}), 200
+
 
 @tasks_bp.route("/tasks", methods=["GET"])
 @token_required
@@ -112,7 +152,14 @@ def obtener_tareas(usuario_email):
         archivo = tarea.get("archivo")
         if isinstance(archivo, str) and archivo.strip():
             tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{archivo}"
+        if "prioridad" not in tarea:
+            tarea["prioridad"] = "media"
+        if "comentarios" not in tarea:
+            tarea["comentarios"] = []
+        if "historial" not in tarea:
+            tarea["historial"] = []
     return jsonify(tareas)
+
 
 @tasks_bp.route("/tasks/<id>", methods=["DELETE"])
 @token_required
@@ -122,3 +169,40 @@ def eliminar_tarea(usuario_email, id):
     if result.deleted_count == 0:
         return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
     return jsonify({"message": "Tarea eliminada"}), 200
+
+
+@tasks_bp.route("/tasks/<id>/comentarios", methods=["POST"])
+@token_required
+def agregar_comentario(usuario_email, id):
+    db = get_db()
+    tarea = db.find_one({"_id": ObjectId(id), "usuario": usuario_email})
+    if not tarea:
+        return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
+
+    data = request.get_json()
+    texto = data.get("texto", "").strip()
+    autor = data.get("autor", "Usuario")
+
+    if not texto:
+        return jsonify({"error": "El comentario no puede estar vacío"}), 400
+
+    comentario = {
+        "texto": texto,
+        "autor": autor,
+        "fecha": datetime.utcnow().isoformat()
+    }
+
+    db.update_one(
+        {"_id": ObjectId(id)},
+        {
+            "$push": {
+                "comentarios": comentario,
+                "historial": {
+                    "accion": f"Comentó: {texto[:50]}{'...' if len(texto) > 50 else ''}",
+                    "fecha": datetime.utcnow().isoformat()
+                }
+            }
+        }
+    )
+
+    return jsonify({"message": "Comentario agregado", "comentario": comentario}), 201
