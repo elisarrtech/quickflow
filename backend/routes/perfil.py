@@ -1,3 +1,4 @@
+# backend/routes/perfil.py
 from flask import Blueprint, request, jsonify, current_app
 from backend.auth_utils import token_required
 
@@ -11,29 +12,39 @@ def perfil(current_user_email):
 
     if request.method == 'GET':
         user = users_collection.find_one({"email": current_user_email})
-        if user:
-            return jsonify({
-                "email": user["email"],
-                "nombre": user.get("nombre", "")
-            }), 200
-        return jsonify({"error": "Usuario no encontrado"}), 404
+        if not user:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        return jsonify({
+            "email": user["email"],
+            "nombre": user.get("nombre", "").strip(),
+            "foto": user.get("foto", "")  # Por si agregas foto en el futuro
+        }), 200
 
     elif request.method == 'PUT':
         try:
             data = request.get_json()
-            nuevo_nombre = data.get("nombre")
+            if not data:
+                return jsonify({"error": "No se enviaron datos"}), 400
+
+            nuevo_nombre = data.get("nombre", "").strip()
             if not nuevo_nombre:
-                return jsonify({"error": "Nombre no proporcionado"}), 400
+                return jsonify({"error": "Nombre no proporcionado o vacío"}), 400
+
+            if len(nuevo_nombre) > 50:
+                return jsonify({"error": "El nombre es demasiado largo"}), 400
 
             result = users_collection.update_one(
                 {"email": current_user_email},
                 {"$set": {"nombre": nuevo_nombre}}
             )
 
-            if result.modified_count:
-                return jsonify({"mensaje": "Nombre actualizado"}), 200
+            if result.modified_count > 0:
+                return jsonify({"mensaje": "Nombre actualizado correctamente ✅"}), 200
             else:
-                return jsonify({"mensaje": "No se realizaron cambios"}), 200
+                # Podría no haber cambios si ya tenía ese nombre
+                return jsonify({"mensaje": "No se realizaron cambios (posiblemente ya tenía ese nombre)"}), 200
+
         except Exception as e:
-            print(f"❌ Error actualizando perfil: {str(e)}")
-            return jsonify({"error": "Error al actualizar perfil"}), 500
+            current_app.logger.error(f"❌ Error actualizando perfil: {str(e)}")
+            return jsonify({"error": "Error interno del servidor"}), 500
