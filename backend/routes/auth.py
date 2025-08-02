@@ -1,12 +1,10 @@
 # backend/routes/auth.py
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from backend.jwt_utils import hash_password, check_password, generate_token
-from bson import ObjectId  # ✅ CORREGIDO: No de flask_pymongo
 import re
 
 auth_bp = Blueprint("auth", __name__)
 
-# Validar formato de email
 def es_email_valido(email):
     patron = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(patron, email) is not None
@@ -17,7 +15,6 @@ def register_user():
     email = data.get("email", "").strip().lower()
     password = data.get("password", "").strip()
 
-    # Validaciones
     if not email or not password:
         return jsonify({"error": "Email y contraseña son requeridos"}), 400
 
@@ -28,8 +25,9 @@ def register_user():
         return jsonify({"error": "La contraseña debe tener al menos 6 caracteres"}), 400
 
     try:
-        mongo = auth_bp.app.mongo  # ✅ Acceso seguro a mongo
-        if mongo.db.users.find_one({"email": email}):
+        # ✅ CORREGIDO: Usa current_app
+        mongo = current_app.mongo.db
+        if mongo.users.find_one({"email": email}):
             return jsonify({"error": "Usuario ya registrado"}), 409
 
         hashed_password = hash_password(password)
@@ -38,7 +36,7 @@ def register_user():
             "password": hashed_password
         }
 
-        result = mongo.db.users.insert_one(nuevo_usuario)
+        result = mongo.users.insert_one(nuevo_usuario)
         user_id = str(result.inserted_id)
 
         return jsonify({
@@ -50,7 +48,7 @@ def register_user():
         }), 201
 
     except Exception as e:
-        print(f"❌ Error en registro: {e}")
+        current_app.logger.error(f"❌ Error en registro: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
 
@@ -60,13 +58,13 @@ def login_user():
     email = data.get("email", "").strip().lower()
     password = data.get("password", "").strip()
 
-    # Validaciones
     if not email or not password:
         return jsonify({"error": "Email y contraseña son requeridos"}), 400
 
     try:
-        mongo = auth_bp.app.mongo
-        user = mongo.db.users.find_one({"email": email})
+        # ✅ CORREGIDO: Usa current_app
+        mongo = current_app.mongo.db
+        user = mongo.users.find_one({"email": email})
 
         if user and check_password(user["password"], password):
             token = generate_token(user["email"])
@@ -81,5 +79,5 @@ def login_user():
             return jsonify({"error": "Credenciales inválidas"}), 401
 
     except Exception as e:
-        print(f"❌ Error en login: {e}")
+        current_app.logger.error(f"❌ Error en login: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
