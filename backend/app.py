@@ -1,3 +1,4 @@
+# app.py
 from flask import Flask, request, send_from_directory, jsonify
 from flask_cors import CORS
 from flask_pymongo import PyMongo
@@ -6,27 +7,27 @@ import os
 # --- Inicializar Flask ---
 app = Flask(__name__)
 
-# --- Configuración CORS (CORREGIDA) ---
-CORS(app,
-     origins="https://peppy-starlight-fd4c37.netlify.app",  # ✅ CORREGIDO: sin espacios
-     supports_credentials=False,
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     allow_headers=["Content-Type", "Authorization"],
-     expose_headers=["Content-Type", "Authorization"])
-
 # --- Configuración MongoDB ---
 app.config["MONGO_URI"] = os.getenv("MONGO_URI")
+if not app.config["MONGO_URI"]:
+    raise ValueError("La variable MONGO_URI no está definida en el entorno")
+
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "clave_supersecreta")
 
+# --- Configuración CORS (CORREGIDA) ---
+CORS(app,
+     origins=[
+         "https://peppy-starlight-fd4c37.netlify.app",
+         "http://localhost:5173"
+     ],
+     supports_credentials=True,  # ✅ Habilitado para tokens
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     allow_headers=["Content-Type", "Authorization", "Origin"],
+     expose_headers=["Content-Type", "Authorization"])
+
+# Inicializar MongoDB
 mongo = PyMongo(app)
 app.mongo = mongo
-
-# --- Importar y configurar Mail (antes de usarlo) ---
-# from backend.routes.report import report_bp
-from backend.utils.mail_utils import init_mail
-
-init_mail(app)  # ✅ Inicializa Flask-Mail con la app
-# app.register_blueprint(report_bp)  # ✅ Registra el blueprint de reportes
 
 # --- Verificar conexión a MongoDB ---
 try:
@@ -34,6 +35,11 @@ try:
     print("✅ Conectado a MongoDB Atlas")
 except Exception as e:
     print("❌ Error al conectar a MongoDB:", e)
+
+# --- Importar y configurar Mail (si lo usas) ---
+# Descomenta si usas mail_utils
+# from backend.utils.mail_utils import init_mail
+# init_mail(app)
 
 # --- Logging para debugging ---
 @app.before_request
@@ -45,26 +51,43 @@ def log_request_info():
 # --- Ruta para servir archivos subidos ---
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
-    return send_from_directory(os.path.join(os.getcwd(), 'uploads'), filename)
+    uploads_dir = os.path.join(os.getcwd(), 'uploads')
+    if not os.path.exists(uploads_dir):
+        os.makedirs(uploads_dir, exist_ok=True)
+    return send_from_directory(uploads_dir, filename)
 
 # --- Importar y registrar Blueprints ---
-from backend.routes.auth import auth_bp
-from backend.routes.tasks import tasks_bp
-from backend.routes.perfil import perfil_bp
-from backend.routes.eventos_routes import eventos_bp
-from backend.routes.alerts_routes import alerts_bp
+try:
+    from backend.routes.auth import auth_bp
+    from backend.routes.tasks import tasks_bp
+    from backend.routes.perfil import perfil_bp
+    from backend.routes.eventos_routes import eventos_bp
+    from backend.routes.alerts_routes import alerts_bp
 
-app.register_blueprint(auth_bp, url_prefix="/api")
-app.register_blueprint(tasks_bp, url_prefix="/api")
-app.register_blueprint(perfil_bp, url_prefix="/api")
-app.register_blueprint(eventos_bp, url_prefix="/api")
-app.register_blueprint(alerts_bp, url_prefix="/api")
+    app.register_blueprint(auth_bp, url_prefix="/api")
+    app.register_blueprint(tasks_bp, url_prefix="/api")
+    app.register_blueprint(perfil_bp, url_prefix="/api")
+    app.register_blueprint(eventos_bp, url_prefix="/api")
+    app.register_blueprint(alerts_bp, url_prefix="/api")
+except Exception as e:
+    print("❌ Error al cargar blueprints:", e)
+    raise
 
 # --- Ruta raíz ---
 @app.route("/")
 def home():
     return "API Quickflow funcionando ✅"
 
+# --- Manejo de errores generales ---
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Ruta no encontrada"}), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({"error": "Error interno del servidor"}), 500
+
 # --- Ejecutar ---
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.getenv("PORT", 5000))
+    app.run(debug=True, host="0.0.0.0", port=port)
