@@ -17,10 +17,10 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "clave_supersecreta")
 # --- Configuración CORS (CORREGIDA) ---
 CORS(app,
      origins=[
-         "https://peppy-starlight-fd4c37.netlify.app",
+         "https://peppy-starlight-fd4c37.netlify.app",  # ✅ CORREGIDO: sin espacios
          "http://localhost:5173"
      ],
-     supports_credentials=True,  # ✅ Habilitado para tokens
+     supports_credentials=True,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization", "Origin"],
      expose_headers=["Content-Type", "Authorization"])
@@ -35,11 +35,6 @@ try:
     print("✅ Conectado a MongoDB Atlas")
 except Exception as e:
     print("❌ Error al conectar a MongoDB:", e)
-
-# --- Importar y configurar Mail (si lo usas) ---
-# Descomenta si usas mail_utils
-# from backend.utils.mail_utils import init_mail
-# init_mail(app)
 
 # --- Logging para debugging ---
 @app.before_request
@@ -90,4 +85,4 @@ def internal_error(e):
 # --- Ejecutar ---
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    app.run(debug=True, host="0.0.0.0", port=port)
+    app.run(debug=False, host="0.0.0.0", port=port)  # ✅ debug=False en producción
