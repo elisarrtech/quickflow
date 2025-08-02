@@ -27,7 +27,9 @@ def crear_tarea(usuario_email):
     enlace = data.get("enlace", "")
     asignado = data.get("asignado", "")
     subtareas_raw = data.get("subtareas", "[]")
+    prioridad = data.get("prioridad", "media")
 
+    # Validar subtareas
     try:
         subtareas = json.loads(subtareas_raw)
     except json.JSONDecodeError:
@@ -41,6 +43,8 @@ def crear_tarea(usuario_email):
         datetime.strptime(fecha, "%Y-%m-%d")
     except ValueError:
         return jsonify({"error": "Formato de fecha inválido. Usa YYYY-MM-DD."}), 400
+    if prioridad not in ["alta", "media", "baja"]:
+        return jsonify({"error": "Prioridad no válida."}), 400
 
     tarea = {
         "titulo": titulo,
@@ -54,11 +58,12 @@ def crear_tarea(usuario_email):
         "asignado": asignado,
         "subtareas": subtareas,
         "usuario": usuario_email,
-        "prioridad": data.get("prioridad", "media"),
+        "prioridad": prioridad,
         "comentarios": [],
         "historial": [{"accion": "Tarea creada", "fecha": datetime.utcnow().isoformat()}]
     }
 
+    # Guardar archivo si viene
     if 'archivo' in request.files:
         archivo = request.files['archivo']
         if archivo.filename:
@@ -88,6 +93,7 @@ def actualizar_tarea(usuario_email, id):
     if not data:
         return jsonify({"error": "No se enviaron datos."}), 400
 
+    # Validaciones
     if "titulo" in data and not data["titulo"].strip():
         return jsonify({"error": "El título no puede estar vacío."}), 400
 
@@ -103,34 +109,54 @@ def actualizar_tarea(usuario_email, id):
     if "prioridad" in data and data["prioridad"] not in ["alta", "media", "baja"]:
         return jsonify({"error": "Prioridad no válida."}), 400
 
+    # Buscar tarea
     tarea = db.find_one({"_id": ObjectId(id), "usuario": usuario_email})
     if not tarea:
         return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
 
-    update_data = {"$set": data}
+    # Preparar actualización
+    update_data = {"$set": {}}
+    historial_acciones = []
 
-    if "subtareas" in data:
-        subtareas_nuevas = data["subtareas"]
-        subtareas_viejas = tarea.get("subtareas", [])
-        for sub in subtareas_nuevas:
-            if isinstance(sub, dict) and sub.get("completada") and not any(s.get("texto") == sub["texto"] and s.get("completada") for s in subtareas_viejas):
-                update_data.setdefault("$push", {})["historial"] = {
-                    "accion": f"Subtarea '{sub['texto']}' completada",
-                    "fecha": datetime.utcnow().isoformat()
-                }
+    # Actualizar solo campos presentes
+    campos_a_actualizar = [
+        "titulo", "descripcion", "estado", "fecha", "hora",
+        "categoria", "nota", "enlace", "asignado", "subtareas", "prioridad"
+    ]
+    for campo in campos_a_actualizar:
+        if campo in data:
+            valor_nuevo = data[campo]
+            valor_viejo = tarea.get(campo)
+            if valor_nuevo != valor_viejo:
+                update_data["$set"][campo] = valor_nuevo
 
-    if "estado" in data and data["estado"] != tarea["estado"]:
-        update_data.setdefault("$push", {})["historial"] = {
-            "accion": f"Tarea marcada como {data['estado']}",
-            "fecha": datetime.utcnow().isoformat()
-        }
+                # Registrar en historial
+                if campo == "estado":
+                    historial_acciones.append(f"Tarea marcada como {valor_nuevo}")
+                elif campo == "prioridad":
+                    historial_acciones.append(f"Prioridad cambiada a {valor_nuevo}")
+                elif campo == "subtareas":
+                    # Detectar subtareas completadas
+                    viejas = {s.get("texto"): s.get("completada", False) for s in valor_viejo if isinstance(s, dict)}
+                    for sub in valor_nuevo:
+                        if isinstance(sub, dict) and sub.get("completada", False):
+                            texto = sub["texto"]
+                            if not viejas.get(texto, False):
+                                historial_acciones.append(f"Subtarea '{texto}' completada")
+                else:
+                    historial_acciones.append(f"{campo.capitalize()} actualizado")
 
-    if "prioridad" in data and data["prioridad"] != tarea.get("prioridad", "media"):
-        update_data.setdefault("$push", {})["historial"] = {
-            "accion": f"Prioridad cambiada a {data['prioridad']}",
-            "fecha": datetime.utcnow().isoformat()
-        }
+    # Añadir historial si hay cambios
+    if historial_acciones:
+        now = datetime.utcnow().isoformat()
+        historial_updates = [{"accion": accion, "fecha": now} for accion in historial_acciones]
+        update_data["$push"] = {"historial": {"$each": historial_updates}}
 
+    # Si no hay cambios, no hacer nada
+    if not update_data["$set"]:
+        return jsonify(tarea), 200
+
+    # Ejecutar actualización
     result = db.update_one(
         {"_id": ObjectId(id), "usuario": usuario_email},
         update_data
@@ -139,7 +165,19 @@ def actualizar_tarea(usuario_email, id):
     if result.matched_count == 0:
         return jsonify({"error": "Tarea no encontrada o no autorizada"}), 404
 
-    return jsonify({"message": "Tarea actualizada"}), 200
+    # Devolver tarea actualizada
+    tarea_actualizada = db.find_one({"_id": ObjectId(id), "usuario": usuario_email})
+    tarea_actualizada["_id"] = str(tarea_actualizada["_id"])
+    if "archivo" in tarea_actualizada:
+        tarea_actualizada["archivoUrl"] = f"{request.host_url.rstrip('/')}/{tarea_actualizada['archivo']}"
+    if "prioridad" not in tarea_actualizada:
+        tarea_actualizada["prioridad"] = "media"
+    if "comentarios" not in tarea_actualizada:
+        tarea_actualizada["comentarios"] = []
+    if "historial" not in tarea_actualizada:
+        tarea_actualizada["historial"] = []
+
+    return jsonify(tarea_actualizada), 200
 
 
 @tasks_bp.route("/tasks", methods=["GET"])
@@ -150,7 +188,7 @@ def obtener_tareas(usuario_email):
     for tarea in tareas:
         tarea["_id"] = str(tarea["_id"])
         archivo = tarea.get("archivo")
-        if isinstance(archivo, str) and archivo.strip():
+        if archivo and isinstance(archivo, str) and archivo.strip():
             tarea["archivoUrl"] = f"{request.host_url.rstrip('/')}/{archivo}"
         if "prioridad" not in tarea:
             tarea["prioridad"] = "media"
@@ -192,13 +230,15 @@ def agregar_comentario(usuario_email, id):
         "fecha": datetime.utcnow().isoformat()
     }
 
+    accion_historial = f"Comentó: {texto[:50]}{'...' if len(texto) > 50 else ''}"
+
     db.update_one(
         {"_id": ObjectId(id)},
         {
             "$push": {
                 "comentarios": comentario,
                 "historial": {
-                    "accion": f"Comentó: {texto[:50]}{'...' if len(texto) > 50 else ''}",
+                    "accion": accion_historial,
                     "fecha": datetime.utcnow().isoformat()
                 }
             }
